@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="lo">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111418">
+  <title>ສຽງເຕືອນ · DeafSound</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">ສຽງເຕືອນ <small>DeafSound</small></div>
+    <div class="pills">
+      <span id="pill-net" class="pill">—</span>
+      <span id="pill-state" class="pill">ຢຸດ</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ───────────── Listen ───────────── -->
+    <section id="view-listen" class="view">
+      <div id="alert" class="alert tier-idle" role="alert" aria-live="assertive">
+        <div id="alert-tier" class="alert-tier"></div>
+        <div id="alert-text" class="alert-text">ກົດ “ເລີ່ມຟັງ”</div>
+        <div id="alert-meta" class="alert-meta">Tap Start to listen</div>
+        <button id="btn-wrong" class="btn-ghost" hidden>ບໍ່ຖືກຕ້ອງ ✕</button>
+      </div>
+
+      <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
+
+      <div class="row">
+        <button id="btn-start" class="btn btn-primary">ເລີ່ມຟັງ</button>
+        <button id="btn-narrate" class="btn">ເກີດຫຍັງຂຶ້ນ?</button>
+      </div>
+
+      <div id="narration" class="narration" hidden>
+        <div id="narration-text" class="narration-text"></div>
+        <div id="narration-meta" class="muted"></div>
+      </div>
+
+      <h2>ສຽງທີ່ຜ່ານມາ <small>Recent</small></h2>
+      <ol id="events" class="events"></ol>
+
+      <details id="debug" class="debug">
+        <summary>Debug · YAMNet</summary>
+        <div id="debug-stats" class="mono"></div>
+        <ol id="debug-top" class="mono"></ol>
+      </details>
+    </section>
+
+    <!-- ───────────── Personal library ───────────── -->
+    <section id="view-library" class="view" hidden>
+      <h2>ເພີ່ມສຽງຂອງຂ້ອຍ <small>Register a sound</small></h2>
+      <div class="card">
+        <label class="field">
+          <span>ຊື່ສຽງ <small>Name</small></span>
+          <input id="reg-name" type="text" maxlength="40" placeholder="ເຊັ່ນ: ກະດິ່ງປະຕູບ້ານ, ແມ່ເອີ້ນຊື່ຂ້ອຍ">
+        </label>
+        <fieldset class="seg" id="reg-tier">
+          <legend>ລະດັບ <small>Tier</small></legend>
+          <label><input type="radio" name="tier" value="danger"><span>ອັນຕະລາຍ</span></label>
+          <label><input type="radio" name="tier" value="caution" checked><span>ລະວັງ</span></label>
+          <label><input type="radio" name="tier" value="info"><span>ຂໍ້ມູນ</span></label>
+        </fieldset>
+        <div class="dots" id="reg-dots"><i></i><i></i><i></i></div>
+        <div id="reg-status" class="reg-status">ກົດປຸ່ມ ແລ້ວເຮັດສຽງນັ້ນ 3 ຄັ້ງ</div>
+        <div class="row">
+          <button id="btn-record" class="btn btn-primary">ອັດສຽງ ຄັ້ງທີ 1</button>
+          <button id="btn-reg-reset" class="btn">ເລີ່ມໃໝ່</button>
+        </div>
+        <button id="btn-save" class="btn btn-wide" disabled>ບັນທຶກສຽງນີ້</button>
+      </div>
+
+      <h2>ສຽງທີ່ບັນທຶກໄວ້ <small>Saved</small></h2>
+      <p class="muted">ຕົວເລກສີ = ຄວາມຄ້າຍຄືກັນກັບສຽງປັດຈຸບັນ (live similarity)</p>
+      <ul id="sounds" class="sounds"></ul>
+    </section>
+
+    <!-- ───────────── Settings ───────────── -->
+    <section id="view-settings" class="view" hidden>
+      <h2>ການແຈ້ງເຕືອນ <small>Alerts</small></h2>
+      <div class="card">
+        <label class="field">
+          <span>ຄວາມອ່ອນໄຫວ <small>Sensitivity</small> <b id="sens-val"></b></span>
+          <input id="set-sens" type="range" min="0.6" max="1.6" step="0.1">
+        </label>
+        <label class="check"><input id="set-info" type="checkbox"> <span>ສະແດງສຽງລະດັບ “ຂໍ້ມູນ” <small>Show info tier</small></span></label>
+        <label class="check"><input id="set-vib-info" type="checkbox"> <span>ສັ່ນສຳລັບ “ຂໍ້ມູນ” <small>Vibrate for info</small></span></label>
+        <label class="check"><input id="set-notify" type="checkbox"> <span>ແຈ້ງເຕືອນເມື່ອປິດໜ້າຈໍ <small>Notify when app is in background</small></span></label>
+        <div class="row">
+          <button class="btn" data-test="danger">ທົດສອບ ອັນຕະລາຍ</button>
+          <button class="btn" data-test="caution">ທົດສອບ ລະວັງ</button>
+          <button class="btn" data-test="info">ທົດສອບ ຂໍ້ມູນ</button>
+        </div>
+      </div>
+
+      <h2>ຄຳອະທິບາຍ AI <small>On-tap narration (optional)</small></h2>
+      <div class="card">
+        <p class="muted">ສົ່ງພຽງແຕ່ຂໍ້ຄວາມ (ຊື່ສຽງ, ຄວາມໝັ້ນໃຈ, ເວລາ) ເມື່ອທ່ານກົດ. ບໍ່ເຄີຍສົ່ງສຽງ.<br>
+          Only text — class, confidence, time — is sent, only when you tap. Audio never leaves the phone.</p>
+        <label class="check"><input id="set-llm" type="checkbox"> <span>ເປີດໃຊ້ <small>Enable</small></span></label>
+        <label class="field"><span>Endpoint</span><input id="set-endpoint" type="url" spellcheck="false"></label>
+        <label class="field"><span>API key <small>(direct Anthropic only — leave empty when using a proxy)</small></span><input id="set-key" type="password" autocomplete="off" spellcheck="false"></label>
+        <label class="field"><span>Model</span><input id="set-model" type="text" spellcheck="false"></label>
+      </div>
+
+      <h2>ສະຖິຕິ <small>Metrics (this device)</small></h2>
+      <div class="card">
+        <div id="metrics" class="mono"></div>
+        <div class="row">
+          <button id="btn-copy-metrics" class="btn">Copy JSON</button>
+          <button id="btn-reset-metrics" class="btn">Reset</button>
+        </div>
+      </div>
+
+      <p class="muted privacy">🔒 ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ. ການກວດຈັບ ແລະ ການເຕືອນເຮັດວຽກໄດ້ໂດຍບໍ່ມີອິນເຕີເນັດ.<br>
+        Audio never leaves this phone. Detection and alerts work fully offline.</p>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-view="listen" class="active">ຟັງ<small>Listen</small></button>
+    <button data-view="library">ສຽງຂອງຂ້ອຍ<small>My sounds</small></button>
+    <button data-view="settings">ຕັ້ງຄ່າ<small>Settings</small></button>
+  </nav>
+
+  <script src="vendor/tf.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

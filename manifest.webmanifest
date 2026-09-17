@@ -1,0 +1,15 @@
+{
+  "name": "ສຽງເຕືອນ · DeafSound",
+  "short_name": "ສຽງເຕືອນ",
+  "description": "Environmental sound alerts for deaf and hard-of-hearing people in Laos. Runs offline on the phone.",
+  "lang": "lo",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#111418",
+  "theme_color": "#111418",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
