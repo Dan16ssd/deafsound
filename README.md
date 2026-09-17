@@ -6,6 +6,8 @@ Output is **big Lao text + vibration**. No speech, no STT/TTS/OCR.
 **Audio never leaves the phone.** Detection, personal sounds and alerts all run offline. The only network call is
 optional on-tap narration, which sends a few lines of text (`class, confidence, timestamp`), never audio.
 
+**Live demo:** https://dan16ssd.github.io/deafsound/ (open in Chrome on Android)
+
 ## Run it
 
 ```sh
