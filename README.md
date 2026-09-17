@@ -71,9 +71,11 @@ the user's name being called) are handled here.
 
 Settings → enable, then either:
 - **Direct:** paste an Anthropic API key (stored in this browser's localStorage only). Fine for a demo on your own phone.
-- **Proxy:** deploy `proxy/worker.js` (`npx wrangler deploy proxy/worker.js`, then `npx wrangler secret put ANTHROPIC_API_KEY`),
-  set Endpoint to the worker URL and leave the key empty. The worker ignores the client's prompt, rebuilds the request from
-  whitelisted event fields, and pins the model, so it can't be abused as a general proxy.
+- **Proxy (recommended):** `proxy/` is a Cloudflare Worker. From `proxy/`: `npx wrangler login`, `npx wrangler deploy`,
+  `npx wrangler secret put ANTHROPIC_API_KEY`. Then set Endpoint to the worker URL and leave the key empty.
+  It only accepts browsers from `ALLOWED_ORIGINS` (`wrangler.toml`), rate-limits each IP to 10 requests/min, ignores the
+  client's prompt, rebuilds the request from whitelisted and clamped event fields, pins the model, and never echoes
+  upstream errors. Origin checks don't stop forged scripts, so also **set a spend limit on the API key's workspace**.
 
 Model: `claude-opus-5` at low effort, with server-side refusal fallbacks enabled. If narration is off, offline or errors out,
 the button shows a local Lao summary of the most urgent recent events, so it always does something.

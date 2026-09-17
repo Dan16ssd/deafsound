@@ -1,0 +1,22 @@
+name = "deafsound-narrate"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+[vars]
+# Comma-separated. Browsers from other origins are refused.
+ALLOWED_ORIGINS = "https://dan16ssd.github.io,http://localhost:8000"
+
+# 10 narration requests per minute per client IP.
+[[ratelimits]]
+name = "NARRATE_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[observability]
+enabled = true
+
+# ANTHROPIC_API_KEY is a secret: npx wrangler secret put ANTHROPIC_API_KEY
