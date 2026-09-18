@@ -44,7 +44,7 @@ const types = {
 // Allowlist of what the app needs. A blocklist is unsafe here: Windows paths
 // are case-insensitive, so "/CERTS/dev-key.pem" would slip past it.
 const ALLOWED_FILES = new Set(['index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'sw.js']);
-const ALLOWED_DIRS = ['js/', 'model/', 'vendor/'];
+const ALLOWED_DIRS = ['js/', 'model/', 'vendor/', 'packs/'];
 function isAllowed(file) {
   const rel = path.relative(root, file).split(path.sep).join('/').toLowerCase();
   if (rel.startsWith('..') || path.isAbsolute(rel)) return false;

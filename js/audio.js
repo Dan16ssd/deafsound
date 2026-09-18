@@ -2,6 +2,8 @@
 // or sent anywhere; chunks go straight into an in-memory ring buffer.
 
 export const SAMPLE_RATE = 16000;
+// Small chunks so a new sound reaches the detector quickly (latency budget).
+export const CHUNK_SECONDS = 0.02;
 
 export class RingBuffer {
   constructor(size) {
@@ -98,7 +100,7 @@ export class MicStream {
     await this.ctx.audioWorklet.addModule('js/capture-worklet.js');
     const source = this.ctx.createMediaStreamSource(this.stream);
     const node = new AudioWorkletNode(this.ctx, 'capture', {
-      processorOptions: { chunkSize: Math.round(rate * 0.05) }, // 50 ms
+      processorOptions: { chunkSize: Math.round(rate * CHUNK_SECONDS) },
     });
     node.port.onmessage = (e) => {
       const chunk = resampler ? resampler.process(e.data) : e.data;

@@ -21,7 +21,8 @@
   <main>
     <!-- ───────────── Listen ───────────── -->
     <section id="view-listen" class="view">
-      <div id="alert" class="alert tier-idle" role="alert" aria-live="assertive">
+      <div id="alert" class="alert tier-idle" role="status" aria-live="polite">
+        <div id="alert-icon" class="alert-icon" aria-hidden="true"></div>
         <div id="alert-tier" class="alert-tier"></div>
         <div id="alert-text" class="alert-text">ກົດ “ເລີ່ມຟັງ”</div>
         <div id="alert-meta" class="alert-meta">Tap Start to listen</div>
@@ -29,6 +30,10 @@
       </div>
 
       <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
+
+      <div id="screen-warn" class="banner" role="status" hidden>
+        🔆 ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ <small id="screen-warn-detail">Keep the screen on while listening</small>
+      </div>
 
       <div class="row">
         <button id="btn-start" class="btn btn-primary">ເລີ່ມຟັງ</button>
@@ -52,6 +57,12 @@
 
     <!-- ───────────── Personal library ───────────── -->
     <section id="view-library" class="view" hidden>
+      <div id="pack" hidden>
+        <h2>ສຽງລາວສຳເລັດຮູບ <small>Lao starter sounds</small></h2>
+        <p class="muted">ກົດ “ເພີ່ມ” ແລ້ວປັບເກນໃຫ້ເຂົ້າກັບໂທລະສັບຂອງທ່ານ<br>Tap Add, then tune the threshold for your phone.</p>
+        <ul id="pack-list" class="sounds"></ul>
+      </div>
+
       <h2>ເພີ່ມສຽງຂອງຂ້ອຍ <small>Register a sound</small></h2>
       <div class="card">
         <label class="field">
@@ -94,6 +105,20 @@
           <button class="btn" data-test="caution">ທົດສອບ ລະວັງ</button>
           <button class="btn" data-test="info">ທົດສອບ ຂໍ້ມູນ</button>
         </div>
+        <button id="btn-guide" class="btn btn-wide">ເບິ່ງຄູ່ມືອີກຄັ້ງ <small>Show guide</small></button>
+      </div>
+
+      <h2>ປັບເກນການກວດ <small>Field tuning · thresholds</small></h2>
+      <div class="card">
+        <p class="muted">Lower = alerts more easily, higher = fewer false alarms. A suggestion appears after you mark alerts “ບໍ່ຖືກຕ້ອງ ✕”.</p>
+        <details>
+          <summary>ທຸກກຸ່ມສຽງ <small>All sound groups</small></summary>
+          <ul id="thresholds" class="thresholds"></ul>
+        </details>
+        <div class="row">
+          <button id="btn-copy-thr" class="btn">Copy overrides JSON</button>
+          <button id="btn-reset-thr" class="btn">Reset all</button>
+        </div>
       </div>
 
       <h2>ຄຳອະທິບາຍ AI <small>On-tap narration (optional)</small></h2>
@@ -119,6 +144,30 @@
         Audio never leaves this phone. Detection and alerts work fully offline.</p>
     </section>
   </main>
+
+  <!-- Full-screen alert for danger / caution -->
+  <div id="overlay" class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="ov-text" aria-describedby="ov-meta" hidden>
+    <div id="ov-tier" class="ov-tier"></div>
+    <div id="ov-icon" class="ov-icon" aria-hidden="true"></div>
+    <div id="ov-text" class="ov-text"></div>
+    <div id="ov-meta" class="ov-meta"></div>
+    <div class="ov-actions">
+      <button id="ov-close" class="btn ov-btn">ຮັບຮູ້ແລ້ວ ✓</button>
+      <button id="ov-wrong" class="btn ov-btn ov-ghost">ບໍ່ຖືກຕ້ອງ ✕</button>
+    </div>
+  </div>
+
+  <!-- First-run visual guide -->
+  <div id="guide" class="guide" role="dialog" aria-modal="true" aria-labelledby="guide-text" hidden>
+    <div id="guide-dots" class="dots" aria-hidden="true"></div>
+    <div id="guide-pic" class="guide-pic" aria-hidden="true"></div>
+    <div id="guide-text" class="guide-text"></div>
+    <div id="guide-extra" class="guide-extra"></div>
+    <div class="row">
+      <button id="guide-skip" class="btn">ຂ້າມ</button>
+      <button id="guide-next" class="btn btn-primary">ຕໍ່ໄປ</button>
+    </div>
+  </div>
 
   <nav class="tabs">
     <button data-view="listen" class="active">ຟັງ<small>Listen</small></button>

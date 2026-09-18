@@ -1,0 +1,15 @@
+{
+  "name": "deafsound",
+  "private": true,
+  "type": "module",
+  "description": "Offline environmental sound alerts (Lao text + vibration) for deaf and hard-of-hearing people in Laos.",
+  "scripts": {
+    "serve": "node serve.mjs 8000",
+    "serve:lan": "node serve.mjs --https --host",
+    "build-pack": "node tools/build-pack.mjs",
+    "test": "node tests/run.mjs"
+  },
+  "devDependencies": {
+    "@tensorflow/tfjs": "4.22.0"
+  }
+}

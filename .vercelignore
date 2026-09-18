@@ -1,0 +1,16 @@
+# Deploy only the static app. Without package.json, Vercel serves the files
+# as-is: no install, no build.
+package.json
+package-lock.json
+node_modules/
+tests/
+tools/
+proxy/
+docs/
+certs/
+recordings/
+serve.mjs
+*.md
+.claude/
+.wrangler/
+.dev.vars

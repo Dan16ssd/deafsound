@@ -1,7 +1,7 @@
 import { MicStream, RingBuffer, rms, SAMPLE_RATE } from './audio.js';
 import { loadYamnet, WINDOW } from './yamnet.js';
-import { TIERS } from './labels.js';
-import { yamnetCandidates, rankCandidates, topClasses, Cooldown } from './detector.js';
+import { TIERS, GROUPS, PERSONAL_ICON } from './labels.js';
+import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
   PersonalMatcher, clipVector, consistency, buildSound,
   listSounds, putSound, deleteSound,
@@ -9,8 +9,19 @@ import {
 } from './library.js';
 import { narrate } from './narrate.js';
 
-const HOP = Math.round(SAMPLE_RATE * 0.25); // run inference every 250 ms of audio
+// Latency budget (spec: sound → vibration ≤ 200 ms). YAMNet already detects a
+// horn with ~50 ms of it in the window, so the budget is spent waiting for the
+// next analysis. Steady state: analyze every 100 ms. When a sudden loud sound
+// starts, analyze every 40 ms for the next 600 ms. If inference is slower than
+// the hop on a weak phone, windows are skipped rather than queued.
+const HOP = Math.round(SAMPLE_RATE * 0.1);
+const HOP_BURST = Math.round(SAMPLE_RATE * 0.04);
+const BURST_MS = 600;
+const ONSET_RATIO = 2.5;       // chunk loudness vs. running noise floor
+const ONSET_MIN_RMS = 0.004;
+const ONSET_LEAD = Math.round(SAMPLE_RATE * 0.04);
 const HOLD_MS = 4000;                       // how long an alert stays on screen
+const FULLSCREEN_TIERS = new Set(['danger', 'caution']);
 const $ = (id) => document.getElementById(id);
 
 // ── persisted settings & metrics (localStorage, this device only) ───────────
@@ -20,6 +31,8 @@ const DEFAULT_SETTINGS = {
   showInfo: true,
   vibrateInfo: false,
   notify: false,
+  guideSeen: false,
+  thresholds: {},   // field-tuned overrides: { [groupId]: threshold }
   narration: { enabled: false, endpoint: 'https://api.anthropic.com/v1/messages', apiKey: '', model: 'claude-opus-5' },
 };
 
@@ -116,8 +129,10 @@ async function start() {
 async function stop() {
   await mic?.stop();
   mic = null;
-  wakeLock?.release().catch(() => {});
+  const lock = wakeLock;
   wakeLock = null;
+  lock?.release().catch(() => {});
+  updateScreenWarn();
   setState('ຢຸດ');
   $('btn-start').textContent = 'ເລີ່ມຟັງ';
   $('btn-start').classList.remove('stop');
@@ -125,17 +140,56 @@ async function stop() {
   showIdle('ກົດ “ເລີ່ມຟັງ”', 'Tap Start to listen');
 }
 
+// A web app can't listen reliably once the screen turns off, so keep it on and
+// tell the user whenever we can't.
 async function acquireWakeLock() {
-  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* optional */ }
+  try {
+    wakeLock = await navigator.wakeLock?.request('screen');
+    wakeLock?.addEventListener('release', () => {
+      wakeLock = null;
+      updateScreenWarn();
+      if (mic && document.visibilityState === 'visible') acquireWakeLock();
+    });
+  } catch {
+    wakeLock = null;
+  }
+  updateScreenWarn();
 }
+
+function updateScreenWarn() {
+  const unsupported = !('wakeLock' in navigator);
+  $('screen-warn').hidden = !mic || (!!wakeLock && !wakeLock.released);
+  $('screen-warn-detail').textContent = unsupported
+    ? "This browser can't keep the screen on. Set a long screen timeout in phone settings."
+    : 'Screen may turn off and listening can stop. Tap the page to keep it on.';
+}
+
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && mic) acquireWakeLock();
 });
+document.addEventListener('click', () => {
+  if (mic && !wakeLock) acquireWakeLock();
+});
+
+let noiseFloor = 0;
+let burstUntil = 0;
 
 function onChunk(chunk, receivedAt) {
   ring.push(chunk);
   lastChunkAt = receivedAt;
-  $('meter-bar').style.width = `${Math.min(100, rms(chunk) * 400)}%`;
+  const level = rms(chunk);
+  $('meter-bar').style.width = `${Math.min(100, level * 400)}%`;
+
+  // Onset detection: a chunk much louder than the recent floor starts a burst
+  // of faster analysis. The floor follows quiet quickly and loud slowly.
+  if (level > ONSET_MIN_RMS && level > noiseFloor * ONSET_RATIO) {
+    // First analysis lands ONSET_LEAD after the onset (enough sound in the
+    // window for YAMNet), instead of wherever the regular schedule falls.
+    if (receivedAt >= burstUntil) lastInferTotal = Math.min(lastInferTotal, ring.total - HOP_BURST + ONSET_LEAD);
+    burstUntil = receivedAt + BURST_MS;
+  }
+  noiseFloor = noiseFloor === 0 ? level : noiseFloor + (level - noiseFloor) * (level < noiseFloor ? 0.2 : 0.01);
+  const hop = receivedAt < burstUntil ? HOP_BURST : HOP;
 
   if (pendingCapture && ring.total >= pendingCapture.end) {
     const { start, resolve } = pendingCapture;
@@ -143,7 +197,7 @@ function onChunk(chunk, receivedAt) {
     resolve(ring.slice(start, CLIP_SAMPLES));
   }
 
-  if (!busy && yam && ring.total >= WINDOW && ring.total - lastInferTotal >= HOP) infer();
+  if (!busy && yam && ring.total >= WINDOW && ring.total - lastInferTotal >= hop) infer();
 }
 
 async function infer() {
@@ -157,13 +211,13 @@ async function infer() {
     const { scores, embedding } = await yam.classify(win);
     const inferMs = performance.now() - t0;
 
-    let cands = yamnetCandidates(scores, settings.sensitivity);
+    let cands = yamnetCandidates(scores, settings.sensitivity, settings.thresholds);
     if (!settings.showInfo) cands = cands.filter((c) => c.tier !== 'info');
 
     if (matcher.sounds.length) {
       const { results } = matcher.match(embedding, liveRms);
       for (const r of results) {
-        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', tier: r.sound.tier, lo: r.sound.name, en: r.sound.name, confidence: r.sim });
+        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', icon: PERSONAL_ICON, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
       }
       updateLiveSims(results);
     }
@@ -216,16 +270,46 @@ function handleCandidates(cands, arrivedAt) {
 
 // ── alert display ───────────────────────────────────────────────────────────
 
+function restartFlash(el) {
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
 function showAlert(ev) {
   shown = ev;
-  const el = $('alert');
-  el.className = `alert tier-${ev.tier}`;
-  void el.offsetWidth; // restart flash animation
-  el.classList.add('flash');
-  $('alert-tier').textContent = `${TIERS[ev.tier].lo}${ev.source === 'personal' ? ' · ສຽງຂອງຂ້ອຍ' : ''}`;
+  const icon = ev.icon ?? TIERS[ev.tier].icon;
+  const tierLabel = `${TIERS[ev.tier].lo}${ev.source === 'personal' ? ' · ສຽງຂອງຂ້ອຍ' : ''}`;
+  const meta = `${ev.en} · ${Math.round(ev.confidence * 100)}%`;
+  const canMarkWrong = ev.source !== 'test';
+
+  const card = $('alert');
+  card.className = `alert tier-${ev.tier}`;
+  restartFlash(card);
+  $('alert-icon').textContent = icon;
+  $('alert-tier').textContent = tierLabel;
   $('alert-text').textContent = ev.lo;
-  $('alert-meta').textContent = `${ev.en} · ${Math.round(ev.confidence * 100)}%`;
-  $('btn-wrong').hidden = false;
+  $('alert-meta').textContent = meta;
+  $('btn-wrong').hidden = !canMarkWrong;
+
+  // Danger and caution take over the whole screen; info stays in the card so
+  // everyday sounds like speech don't keep covering the app.
+  const overlay = $('overlay');
+  if (FULLSCREEN_TIERS.has(ev.tier)) {
+    overlay.className = `overlay tier-${ev.tier}`;
+    $('ov-tier').textContent = `${TIERS[ev.tier].icon} ${tierLabel}`;
+    $('ov-icon').textContent = icon;
+    $('ov-text').textContent = ev.lo;
+    $('ov-meta').textContent = meta;
+    $('ov-wrong').hidden = !canMarkWrong;
+    overlay.hidden = false;
+    restartFlash(overlay);
+    // Move focus only if the user isn't typing somewhere else.
+    const active = document.activeElement;
+    if (!active || active === document.body || overlay.contains(active) || active.tagName === 'BUTTON') $('ov-close').focus({ preventScroll: true });
+  } else {
+    overlay.hidden = true;
+  }
   extendHold();
 }
 
@@ -237,23 +321,33 @@ function extendHold() {
 function showIdle(text, meta) {
   shown = null;
   clearTimeout(holdTimer);
+  $('overlay').hidden = true;
   $('alert').className = 'alert tier-idle';
+  $('alert-icon').textContent = '';
   $('alert-tier').textContent = '';
-  $('alert-text').textContent = text ?? 'ກຳລັງຟັງ…';
-  $('alert-meta').textContent = meta ?? 'ບໍ່ມີສຽງທີ່ຕ້ອງລະວັງ · Listening';
+  $('alert-text').textContent = text ?? (mic ? 'ກຳລັງຟັງ…' : 'ກົດ “ເລີ່ມຟັງ”');
+  $('alert-meta').textContent = meta ?? (mic ? 'ບໍ່ມີສຽງທີ່ຕ້ອງລະວັງ · Listening' : 'Tap Start to listen');
   $('btn-wrong').hidden = true;
 }
 
-$('btn-wrong').addEventListener('click', () => {
+function markWrong() {
   if (!shown) return;
   const m = metrics.alerts[shown.key];
-  if (m) m.wrong++;
+  if (m) {
+    m.wrong++;
+    (m.wrongConf ??= []).push(Math.round(shown.confidence * 100) / 100);
+    if (m.wrongConf.length > 50) m.wrongConf.shift();
+  }
   const ev = log.find((e) => e.id === shown.id);
   if (ev) ev.wrong = true;
   saveMetrics();
   renderEvents();
   showIdle();
-});
+}
+
+$('btn-wrong').addEventListener('click', markWrong);
+$('ov-wrong').addEventListener('click', markWrong);
+$('ov-close').addEventListener('click', () => showIdle());
 
 async function notify(ev) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -430,6 +524,7 @@ async function refreshSounds() {
     li.textContent = 'ຍັງບໍ່ມີ. ບັນທຶກສຽງກະດິ່ງປະຕູ, ສຽງເອີ້ນຊື່, ຫຼື ສຽງແກລົດທີ່ທ່ານຮູ້ຈັກ.';
     $('sounds').append(li);
   }
+  await renderPack(); // an added or deleted pack sound changes what's offered
 }
 
 function renderSound(s) {
@@ -444,8 +539,9 @@ function renderSound(s) {
       <button class="del">ລຶບ</button>
     </div>`;
   li.querySelector('.name').textContent = s.name;
-  li.querySelector('.meta').textContent =
-    `${TIERS[s.tier].lo} · ຄວາມຄືກັນ ${s.pairMin} · ${(s.registerMs / 1000).toFixed(1)} ວິ`;
+  li.querySelector('.meta').textContent = s.packId
+    ? `${TIERS[s.tier].lo} · ຊຸດສຳເລັດຮູບ · ${s.en ?? ''}`
+    : `${TIERS[s.tier].lo} · ຄວາມຄືກັນ ${s.pairMin} · ${(s.registerMs / 1000).toFixed(1)} ວິ`;
   const slider = li.querySelector('input');
   const thr = li.querySelector('.thr');
   slider.value = s.threshold;
@@ -517,8 +613,21 @@ function bindSettings() {
     const tier = b.dataset.test;
     navigator.vibrate?.(TIERS[tier].vibrate);
     showAlert({ key: `test:${tier}`, source: 'test', tier, lo: `ທົດສອບ ${TIERS[tier].lo}`, en: `Test · ${TIERS[tier].en}`, confidence: 1 });
-    $('btn-wrong').hidden = true;
   }));
+
+  $('btn-guide').addEventListener('click', () => openGuide());
+
+  $('btn-copy-thr').addEventListener('click', async () => {
+    const btn = $('btn-copy-thr');
+    try { await navigator.clipboard.writeText(JSON.stringify(settings.thresholds, null, 2)); btn.textContent = 'Copied ✓'; }
+    catch { btn.textContent = 'Copy failed'; }
+    setTimeout(() => { btn.textContent = 'Copy overrides JSON'; }, 2000);
+  });
+  $('btn-reset-thr').addEventListener('click', () => {
+    settings.thresholds = {};
+    saveSettings();
+    renderThresholds();
+  });
 
   $('btn-copy-metrics').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(JSON.stringify(metrics, null, 2)); $('btn-copy-metrics').textContent = 'Copied ✓'; }
@@ -549,17 +658,154 @@ function renderMetrics() {
     'alerts (count / marked wrong):',
     ...Object.entries(metrics.alerts)
       .sort((a, b) => b[1].count - a[1].count)
-      .map(([k, m]) => `  ${m.label}  ${m.count} / ${m.wrong}${m.count ? `  (${Math.round((100 * m.wrong) / m.count)}% FP)` : ''}   [${k}]`),
+      .map(([k, m]) => {
+        const fp = m.count ? `  (${Math.round((100 * m.wrong) / m.count)}% FP)` : '';
+        const group = GROUPS.find((g) => `yamnet:${g.id}` === k);
+        const current = group && (settings.thresholds[group.id] ?? defaultThreshold(group));
+        const s = group && suggestThreshold(m.wrongConf, current);
+        return `  ${m.label}  ${m.count} / ${m.wrong}${fp}${s ? `  → suggest threshold ${s}` : ''}   [${k}]`;
+      }),
   ];
   $('metrics').textContent = lines.join('\n');
 }
+
+// ── field threshold tuning ──────────────────────────────────────────────────
+
+function renderThresholds() {
+  $('thresholds').replaceChildren(...GROUPS.map((g) => {
+    const li = document.createElement('li');
+    const def = defaultThreshold(g);
+    const override = settings.thresholds[g.id];
+    const current = override ?? def;
+    li.className = override !== undefined ? 't-changed' : '';
+    li.innerHTML = `
+      <div class="t-head"><span class="t-name"></span><small class="t-tier"></small></div>
+      <div class="t-row">
+        <input type="range" min="0.10" max="0.95" step="0.01">
+        <span class="t-val"></span>
+      </div>`;
+    li.querySelector('.t-name').textContent = `${g.icon} ${g.lo}`;
+    li.querySelector('.t-tier').textContent = `${g.en} · ${TIERS[g.tier].en} · default ${def.toFixed(2)}`;
+    const slider = li.querySelector('input');
+    slider.setAttribute('aria-label', `${g.en} threshold`);
+    const val = li.querySelector('.t-val');
+    slider.value = current;
+    val.textContent = current.toFixed(2);
+
+    const apply = (v) => {
+      if (Math.abs(v - def) < 0.005) delete settings.thresholds[g.id];
+      else settings.thresholds[g.id] = Math.round(v * 100) / 100;
+      saveSettings();
+      renderThresholds();
+    };
+    slider.addEventListener('input', () => { val.textContent = Number(slider.value).toFixed(2); });
+    slider.addEventListener('change', () => apply(Number(slider.value)));
+
+    const suggestion = suggestThreshold(metrics.alerts[`yamnet:${g.id}`]?.wrongConf, current);
+    if (suggestion) {
+      const btn = document.createElement('button');
+      btn.className = 't-suggest';
+      btn.textContent = `Suggested ${suggestion.toFixed(2)} (from false alarms) · apply`;
+      btn.addEventListener('click', () => apply(suggestion));
+      li.querySelector('.t-row').append(btn);
+    }
+    return li;
+  }));
+}
+
+// ── Lao starter pack ────────────────────────────────────────────────────────
+
+let pack = [];
+
+async function loadPack() {
+  try {
+    const res = await fetch('packs/lao-starter.json');
+    pack = res.ok ? ((await res.json()).sounds ?? []) : [];
+  } catch {
+    pack = [];
+  }
+  await renderPack();
+}
+
+async function renderPack() {
+  const added = new Set((await listSounds()).map((s) => s.packId).filter(Boolean));
+  const available = pack.filter((p) => !added.has(p.id));
+  $('pack').hidden = available.length === 0;
+  $('pack-list').replaceChildren(...available.map((p) => {
+    const li = document.createElement('li');
+    li.innerHTML = '<div class="head"><span class="name"></span><button class="add">ເພີ່ມ</button></div><div class="muted meta"></div>';
+    li.querySelector('.name').textContent = `${PERSONAL_ICON} ${p.name}`;
+    li.querySelector('.meta').textContent = `${p.en} · ${TIERS[p.tier].lo}`;
+    li.querySelector('.add').addEventListener('click', async () => {
+      await putSound({
+        ...p,
+        id: crypto.randomUUID?.() ?? String(Date.now()),
+        packId: p.id,
+        registerMs: 0,
+        createdAt: Date.now(),
+      });
+      await refreshSounds();
+    });
+    return li;
+  }));
+}
+
+// ── first-run visual guide ──────────────────────────────────────────────────
+
+const GUIDE_STEPS = [
+  { pic: '📱👂', text: 'ໂທລະສັບຈະຟັງສຽງອ້ອມຂ້າງແທນທ່ານ' },
+  { pic: '🔴🟡⚪', text: 'ສີ ແລະ ການສັ່ນບອກວ່າສຽງນັ້ນອັນຕະລາຍປານໃດ', feel: true },
+  { pic: '⭐🔔', text: 'ບັນທຶກສຽງຂອງທ່ານເອງ ເຊັ່ນ ກະດິ່ງປະຕູ ຫຼື ສຽງເອີ້ນຊື່' },
+  { pic: '🔆🔒', text: 'ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ · ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ' },
+];
+let guideStep = 0;
+
+function openGuide() {
+  guideStep = 0;
+  $('guide').hidden = false;
+  renderGuide();
+  $('guide-next').focus({ preventScroll: true });
+}
+
+function closeGuide() {
+  $('guide').hidden = true;
+  settings.guideSeen = true;
+  saveSettings();
+}
+
+function renderGuide() {
+  const step = GUIDE_STEPS[guideStep];
+  $('guide-pic').textContent = step.pic;
+  $('guide-text').textContent = step.text;
+  $('guide-dots').replaceChildren(...GUIDE_STEPS.map((_, i) => {
+    const d = document.createElement('i');
+    if (i <= guideStep) d.className = 'on';
+    return d;
+  }));
+  $('guide-extra').replaceChildren(...(step.feel ? ['danger', 'caution', 'info'].map((tier) => {
+    const b = document.createElement('button');
+    b.className = `btn tier-${tier}`;
+    b.textContent = `${TIERS[tier].icon} ${TIERS[tier].lo} · ສຳຜັດການສັ່ນ`;
+    b.addEventListener('click', () => navigator.vibrate?.(TIERS[tier].vibrate));
+    return b;
+  }) : []));
+  const last = guideStep === GUIDE_STEPS.length - 1;
+  $('guide-next').textContent = last ? 'ເລີ່ມໃຊ້ ✓' : 'ຕໍ່ໄປ →';
+  $('guide-skip').hidden = last;
+}
+
+$('guide-next').addEventListener('click', () => {
+  if (guideStep === GUIDE_STEPS.length - 1) closeGuide();
+  else { guideStep++; renderGuide(); }
+});
+$('guide-skip').addEventListener('click', closeGuide);
 
 // ── tabs ────────────────────────────────────────────────────────────────────
 
 document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('active', x === b));
   for (const v of ['listen', 'library', 'settings']) $(`view-${v}`).hidden = v !== b.dataset.view;
-  if (b.dataset.view === 'settings') renderMetrics();
+  if (b.dataset.view === 'settings') { renderMetrics(); renderThresholds(); }
   scrollTo(0, 0);
 }));
 
@@ -567,6 +813,7 @@ $('btn-start').addEventListener('click', () => (mic ? stop() : start()));
 
 bindSettings();
 resetReg();
-refreshSounds();
+refreshSounds().then(loadPack);
+if (!settings.guideSeen) openGuide();
 // Load the model in the background so "Start" is instant.
 getYamnet().catch((err) => console.error('[DeafSound] model load failed', err));

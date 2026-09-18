@@ -1,6 +1,6 @@
 // Offline cache for the app shell, TensorFlow.js and the YAMNet model.
 // Only same-origin GETs are cached. The narration POST is never touched.
-const CACHE = 'deafsound-v2';
+const CACHE = 'deafsound-v5';
 
 const ASSETS = [
   './',
@@ -23,6 +23,7 @@ const ASSETS = [
   'model/group1-shard3of4.bin',
   'model/group1-shard4of4.bin',
   'model/yamnet_class_map.csv',
+  'packs/lao-starter.json',
 ];
 
 self.addEventListener('install', (e) => {

@@ -112,7 +112,7 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
 .alert.tier-danger { background: var(--bg-danger); border-color: var(--text-danger); color: var(--text-danger); }
 .alert.tier-caution { background: var(--bg-warning); border-color: var(--text-warning); color: var(--text-warning); }
 .alert.tier-info { background: var(--bg-info); color: var(--text-info); }
-.alert.tier-danger .alert-meta, .alert.tier-caution .alert-meta { color: inherit; opacity: 0.8; }
+.alert.tier-danger .alert-meta, .alert.tier-caution .alert-meta { color: inherit; font-weight: 600; } /* no opacity: keeps WCAG AA contrast */
 .alert.flash { animation: flash 0.5s ease-out 3; }
 @keyframes flash { 50% { filter: brightness(1.35); transform: scale(1.01); } }
 @media (prefers-reduced-motion: reduce) { .alert.flash { animation: none; } }
@@ -136,7 +136,7 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
 .btn-wide { width: 100%; }
 .btn-ghost {
   font: inherit; margin-top: 8px; padding: 6px 14px; border-radius: 999px;
-  background: transparent; color: inherit; border: 1px solid currentColor; opacity: 0.75;
+  background: transparent; color: inherit; border: 1px solid currentColor; font-weight: 600;
 }
 .btn:focus-visible, .btn-ghost:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
@@ -212,3 +212,74 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
   padding: 10px 4px; display: flex; flex-direction: column; align-items: center; min-height: 60px;
 }
 .tabs button.active { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+
+/* ── icons in the alert card ─────────────────────────────────── */
+
+.alert-icon { font-size: clamp(3rem, 16vw, 5rem); line-height: 1; min-height: 1em; }
+.alert.tier-idle .alert-icon { display: none; }
+
+/* ── full-screen alert (danger / caution) ────────────────────── */
+
+.overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; text-align: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  background: var(--bg-info); color: var(--text-info);
+}
+.overlay.tier-danger { background: var(--bg-danger); color: var(--text-danger); box-shadow: inset 0 0 0 10px var(--text-danger); }
+.overlay.tier-caution { background: var(--bg-warning); color: var(--text-warning); box-shadow: inset 0 0 0 10px var(--text-warning); }
+.overlay.flash { animation: flash 0.5s ease-out 3; }
+@media (prefers-reduced-motion: reduce) { .overlay.flash { animation: none; } }
+
+.ov-tier { font-size: clamp(1.4rem, 6vw, 2rem); font-weight: 800; letter-spacing: 0.02em; }
+.ov-icon { font-size: clamp(6rem, 38vw, 12rem); line-height: 1.05; }
+.ov-text { font-size: clamp(2.4rem, 12vw, 5rem); font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; max-width: 18ch; }
+.ov-meta { font-size: 1.05rem; font-weight: 600; }
+.ov-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 18px; width: min(100%, 520px); }
+.ov-btn { flex: 1 1 180px; min-height: 64px; font-size: 1.25rem; background: var(--surface); color: var(--text); border: 2px solid currentColor; }
+.ov-ghost { background: transparent; color: inherit; }
+
+/* ── banner ──────────────────────────────────────────────────── */
+
+.banner {
+  margin-top: 10px; padding: 10px 14px; border-radius: 12px;
+  background: var(--bg-warning); color: var(--text-warning); font-weight: 700;
+  border: 1px solid var(--text-warning);
+}
+.banner small { display: block; color: inherit; font-weight: 500; }
+
+/* ── first-run guide ─────────────────────────────────────────── */
+
+.guide {
+  position: fixed; inset: 0; z-index: 30;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; text-align: center; overflow-y: auto;
+  padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px calc(env(safe-area-inset-bottom, 0px) + 24px);
+  background: var(--bg); color: var(--text);
+}
+.guide .row { width: min(100%, 520px); }
+.guide-pic { font-size: clamp(5rem, 30vw, 9rem); line-height: 1.1; }
+.guide-text { font-size: clamp(1.6rem, 7vw, 2.4rem); font-weight: 800; line-height: 1.35; max-width: 20ch; }
+.guide-extra { display: grid; gap: 10px; width: min(100%, 520px); }
+.guide-extra .btn { width: 100%; }
+.guide-extra .tier-danger { background: var(--bg-danger); color: var(--text-danger); border-color: var(--text-danger); }
+.guide-extra .tier-caution { background: var(--bg-warning); color: var(--text-warning); border-color: var(--text-warning); }
+.guide-extra .tier-info { background: var(--bg-info); color: var(--text-info); }
+.dots i.on { background: var(--accent); }
+
+/* ── threshold tuning list ───────────────────────────────────── */
+
+.thresholds { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.thresholds li { border-bottom: 1px solid var(--border); padding: 8px 0; }
+.thresholds .t-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.thresholds .t-name { font-weight: 700; }
+.thresholds .t-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.thresholds input { flex: 1 1 160px; accent-color: var(--accent); }
+.thresholds .t-val { font-family: ui-monospace, Menlo, monospace; min-width: 3.2em; text-align: right; }
+.thresholds .t-changed .t-val { color: var(--accent); font-weight: 700; }
+.thresholds .t-suggest {
+  font: inherit; font-size: 0.85rem; border-radius: 999px; padding: 4px 10px;
+  border: 1px solid var(--text-warning); background: var(--bg-warning); color: var(--text-warning);
+}
+.sounds .add { font: inherit; font-weight: 700; background: var(--accent); color: var(--accent-text); border: 0; border-radius: 10px; padding: 8px 16px; }
