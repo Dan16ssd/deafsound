@@ -5,7 +5,7 @@ workers_dev = true
 
 [vars]
 # Comma-separated. Browsers from other origins are refused.
-ALLOWED_ORIGINS = "https://dan16ssd.github.io,http://localhost:8000"
+ALLOWED_ORIGINS = "https://deafsound.vercel.app,https://dan16ssd.github.io,http://localhost:8000"
 
 # 10 narration requests per minute per client IP.
 [[ratelimits]]
