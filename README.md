@@ -110,6 +110,23 @@ It is a loudness heuristic, not distance measurement: a source that simply gets 
   background spread on that phone, it needs ~40 background samples (about 20 s) before arming, and it holds 15 s per event; if the
   unusual sound continues it soon becomes "familiar" and stops alerting.
 
+### Doppler, flash/band output, name preset, daily summary
+
+- **Doppler** (`js/pitch.js`): the dominant tone (200–1600 Hz, autocorrelation) of a horn/siren is tracked. A pitch fall of ≥ 3 % while
+  the level is no longer climbing means the vehicle just passed: the alert says "ຜ່ານໄປແລ້ວ · Passed you" with one short buzz, and the
+  "getting closer" escalation is suppressed while the pitch is falling.
+- **Flash** (Settings): flashes the camera torch in the alert's vibration pattern, for a phone in a bag or on a table. Needs camera
+  permission; off by default.
+- **Vibrating band** (Settings, Chrome Android): connects over Web Bluetooth to any band exposing the standard *Immediate Alert* service
+  (0x1802): mild for caution, high for danger or critical risk. Untested on real hardware.
+- **"Someone calls my name"** (My sounds): one-tap preset (caution tier, guidance to record different people calling) for the existing
+  personal-sound matcher + verifier head. It matches the sound of a call, not words.
+- **Today** (Listen tab): persistent on-device summary of today's alerts (counts per tier, critical/approaching, top sounds). Alerts you
+  marked Wrong are excluded; nothing leaves the phone.
+
+Not built from the plan: a second pretrained ensemble model (needs a model download and a latency check), stereo direction
+(device-dependent) and live Lao captions (needs a team decision because audio would leave the phone).
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

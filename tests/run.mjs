@@ -11,6 +11,9 @@ import { yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestTh
 import { BackgroundPool, headProb, withHead, addHardNegative, HEAD } from '../js/head.js';
 import { SceneModel, SCENES, sceneOverrides } from '../js/scene.js';
 import { NoveltyDetector, NOVELTY } from '../js/novelty.js';
+import { estimatePitch, PitchTrend } from '../js/pitch.js';
+import { flashSchedule, bandLevel } from '../js/outputs.js';
+import { toRecord, addRecord, summarize, TIMELINE_MAX } from '../js/timeline.js';
 import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
@@ -404,4 +407,58 @@ test('novelty: fires on a loud unfamiliar sound, not on familiar background or q
   assert.equal(r.fire, true, `novelty ${r.novelty.toFixed(2)} vs ${d.threshold().toFixed(2)}`);
   assert.equal(call(strange, { now: 100000 + NOVELTY.holdMs - 1 }).fire, false, 'held');
   assert.equal(call(strange, { now: 100000 + NOVELTY.holdMs + 1 }).fire, true, 'after hold');
+});
+
+// ── doppler pitch ───────────────────────────────────────────────────────────
+
+function tone(hz, n = 2048, amp = 0.3) { const a = new Float32Array(n); for (let i = 0; i < n; i++) a[i] = amp * Math.sin((2 * Math.PI * hz * i) / SR); return a; }
+
+test('pitch: estimates a horn tone, rejects noise and silence, tracks a falling Doppler pitch', () => {
+  for (const hz of [250, 420, 500, 880, 1400]) {
+    const p = estimatePitch(tone(hz));
+    assert.ok(p && Math.abs(p.hz - hz) / hz < 0.01, `${hz} Hz → ${p?.hz}`);
+  }
+  assert.equal(estimatePitch(noise(2048, 0.2)), null, 'noise');
+  assert.equal(estimatePitch(tone(440, 2048, 0.001)), null, 'silence');
+
+  const run = (f0, f1) => { const tr = new PitchTrend(); for (let i = 0; i <= 10; i++) tr.push(i * 200, estimatePitch(tone(f0 + ((f1 - f0) * i) / 10))); return tr.state(); };
+  assert.equal(run(520, 470), 'falling');   // passing: ≈ −10 %
+  assert.equal(run(470, 520), 'rising');
+  assert.equal(run(500, 502), 'steady');
+  assert.equal(new PitchTrend().state(), 'steady');
+});
+
+// ── outputs ─────────────────────────────────────────────────────────────────
+
+test('outputs: flash schedule follows the vibration pattern; band level by tier/risk', () => {
+  assert.deepEqual(flashSchedule([120, 70, 120]), [
+    { at: 0, on: true }, { at: 120, on: false }, { at: 190, on: true }, { at: 310, on: false },
+  ]);
+  assert.equal(bandLevel('danger'), 2);
+  assert.equal(bandLevel('caution'), 1);
+  assert.equal(bandLevel('caution', { level: 'critical' }), 2);
+  assert.equal(bandLevel('info'), 0);
+});
+
+// ── timeline ────────────────────────────────────────────────────────────────
+
+test('timeline: compact records, cap, daily summary ignores wrong alerts and other days', () => {
+  const now = new Date(); now.setHours(12, 0, 0, 0);
+  const t0 = now.getTime();
+  const ev = (o) => ({ t: t0, key: 'yamnet:horn', lo: 'ມີສຽງແກລົດ', en: 'Horn', icon: '📯', tier: 'danger', emb: new Float32Array(1024), ...o });
+  const list = [];
+  addRecord(list, ev({}));
+  addRecord(list, ev({ approach: true, risk: { level: 'critical' } }));
+  addRecord(list, ev({ key: 'yamnet:dog', lo: 'ໝາ', en: 'Dog', tier: 'caution' }));
+  addRecord(list, ev({ wrong: true }));
+  addRecord(list, ev({ t: t0 - 3 * 86400000 }));
+  assert.ok(!('emb' in list[0]), 'no embeddings stored');
+  const s = summarize(list, t0 - 3600000);
+  assert.equal(s.total, 3);
+  assert.equal(s.danger, 2); assert.equal(s.caution, 1);
+  assert.equal(s.critical, 1); assert.equal(s.approaching, 1);
+  assert.equal(s.top[0].count, 2);
+  assert.equal(s.byHour[12], 3);
+  for (let i = 0; i < TIMELINE_MAX + 20; i++) addRecord(list, ev({}));
+  assert.equal(list.length, TIMELINE_MAX);
 });

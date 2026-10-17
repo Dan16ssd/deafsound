@@ -125,6 +125,12 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Alert | ມີສຽງດັງທີ່ບໍ່ຄຸ້ນເຄີຍ | Unusual loud sound |  |  |
 | Listen | ຖະໜົນ / ໃນເຮືອນ / ບ່ອນມີຄົນຫຼາຍ / ວັດ / ທຳມະຊາດ / ງຽບ / ສຽງປະສົມ | Street / Home / Crowd or market / Temple / Outdoors / Quiet / Mixed surroundings |  |  |
 | Alert | ປິດສຽງນີ້ 10 ນາທີ | Snooze this sound for 10 minutes |  |  |
+| Alert | ຜ່ານໄປແລ້ວ | Has passed (added after a vehicle's name when its pitch drops) |  |  |
+| Library | ສຽງຄົນເອີ້ນຊື່ຂ້ອຍ / ມີຄົນເອີ້ນຊື່ຂ້ອຍ | Someone calls my name |  |  |
+| Library | ໃຫ້ຄົນຕ່າງກັນເອີ້ນຊື່ທ່ານ 3 ຄັ້ງ (ໃກ້ໆ ແລະ ດັງປົກກະຕິ) ແລ້ວກົດອັດສຽງ | Have different people call your name 3 times (close, normal volume), then tap Record |  |  |
+| Settings | ກະພິບໄຟສາຍ ເມື່ອມີສຽງເຕືອນ | Flash the camera light on alerts |  |  |
+| Settings | ເຊື່ອມຕໍ່ສາຍແຮງສັ່ນ (Bluetooth) | Connect vibrating band |  |  |
+| Listen | ມື້ນີ້ / ທັງໝົດ / ມື້ນີ້ຍັງບໍ່ມີສຽງເຕືອນ | Today / Total / No alerts yet today |  |  |
 
 ## 3. Questions for reviewers
 

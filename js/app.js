@@ -5,6 +5,9 @@ import { LevelTrend, APPROACH } from './approach.js';
 import { BackgroundPool, HEAD, headProb, withHead, addHardNegative } from './head.js';
 import { SceneModel, SCENES, sceneOverrides } from './scene.js';
 import { NoveltyDetector, NOVEL_ALERT } from './novelty.js';
+import { estimatePitch, PitchTrend } from './pitch.js';
+import { Flash, Band, bandLevel } from './outputs.js';
+import { loadTimeline, saveTimeline, addRecord, summarize } from './timeline.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
@@ -38,6 +41,7 @@ const DEFAULT_SETTINGS = {
   showInfo: true,
   vibrateInfo: false,
   notify: false,
+  flash: false,
   guideSeen: false,
   thresholds: {},   // field-tuned overrides: { [groupId]: threshold }
   narration: { enabled: false, endpoint: 'https://api.anthropic.com/v1/messages', apiKey: '', model: 'claude-opus-5' },
@@ -183,6 +187,12 @@ const trend = new LevelTrend();
 const bgPool = new BackgroundPool();
 const snooze = new Snooze();
 const scene = new SceneModel();
+const pitchTrend = new PitchTrend();
+const flash = new Flash();
+const band = new Band();
+const timeline = loadTimeline();
+const PASSED_LO = 'ຜ່ານໄປແລ້ວ'; // "has passed"
+const passedAt = new Map();
 const novelty = new NoveltyDetector();
 let lastScene = null;
 let lastLevel = 0;
@@ -226,6 +236,7 @@ async function infer() {
     const liveRms = rms(win);
     trend.push(Date.now(), liveRms);
     lastLevel = liveRms;
+    pitchTrend.push(Date.now(), estimatePitch(win));
     const t0 = performance.now();
     const { scores, embedding } = await yam.classify(win);
     const inferMs = performance.now() - t0;
@@ -283,14 +294,27 @@ function handleCandidates(cands, arrivedAt) {
   // A moving source that keeps getting louder is coming toward the user:
   // escalate once (stronger buzz, "getting closer" text) even inside cooldown.
   const mover = cands.find((c) => GROUP_BY_ID.get(c.group)?.moving && c.tier !== 'info');
-  if (mover && trend.state() === 'approaching' && now - (approachAlerted.get(mover.key) ?? 0) > APPROACH.realertMs) {
+  const pitch = pitchTrend.state();
+  if (mover && pitch === 'falling' && trend.state() !== 'approaching' && now - (passedAt.get(mover.key) ?? 0) > APPROACH.realertMs) {
+    // Pitch dropping while the level stops climbing: it just went past.
+    passedAt.set(mover.key, now);
+    const ev = { ...mover, passed: true, t: now, id: `${now}-${mover.key}-passed` };
+    log.push(ev);
+    navigator.vibrate?.([150]);
+    showAlert(ev);
+    record(ev);
+    return;
+  }
+  if (mover && pitch !== 'falling' && trend.state() === 'approaching' && now - (approachAlerted.get(mover.key) ?? 0) > APPROACH.realertMs) {
     approachAlerted.set(mover.key, now);
     const risk = assessRisk({ tier: mover.tier, confidence: mover.confidence, approaching: true, level: lastLevel });
     const ev = { ...mover, approach: true, risk, t: now, id: `${now}-${mover.key}-approach` };
     log.push(ev);
-    navigator.vibrate?.(risk.level === 'critical' ? vibrationFor(mover.tier, risk) : APPROACH.vibrate);
+    const pattern = risk.level === 'critical' ? vibrationFor(mover.tier, risk) : APPROACH.vibrate;
+    navigator.vibrate?.(pattern);
+    external(pattern, mover.tier, risk);
     showAlert(ev);
-    renderEvents();
+    record(ev);
     return;
   }
 
@@ -310,7 +334,9 @@ function handleCandidates(cands, arrivedAt) {
   if (!outranked) {
     const shouldVibrate = top.tier !== 'info' || settings.vibrateInfo;
     if (shouldVibrate) {
-      navigator.vibrate?.(vibrationFor(top.tier, top.risk));
+      const pattern = vibrationFor(top.tier, top.risk);
+      navigator.vibrate?.(pattern);
+      external(pattern, top.tier, top.risk);
       pushCapped(metrics.latencyMs, performance.now() - arrivedAt);
     }
     showAlert(top);
@@ -318,8 +344,21 @@ function handleCandidates(cands, arrivedAt) {
     console.log(`[DeafSound] ALERT ${top.tier} ${top.en} ${(top.confidence * 100).toFixed(0)}%`);
   }
 
-  renderEvents();
+  for (const ev of log.slice(-fresh.length)) record(ev);
   saveMetrics();
+}
+
+// Flash / band outputs (settings-gated) and the persistent timeline.
+function external(pattern, tier, risk) {
+  if (settings.flash) flash.play(pattern);
+  band.alert(bandLevel(tier, risk));
+}
+
+function record(ev) {
+  addRecord(timeline, ev);
+  saveTimeline(timeline);
+  renderEvents();
+  renderToday();
 }
 
 // ── alert display ───────────────────────────────────────────────────────────
@@ -329,6 +368,9 @@ function restartFlash(el) {
   void el.offsetWidth;
   el.classList.add('flash');
 }
+
+const lo = (ev) => (ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.passed ? `${ev.lo} · ${PASSED_LO}` : ev.lo);
+const metaOf = (ev, meta) => (ev.approach ? `↗ Getting closer · ${meta}` : ev.passed ? `↘ Passed you · ${meta}` : meta);
 
 function showAlert(ev) {
   shown = ev;
@@ -342,8 +384,8 @@ function showAlert(ev) {
   restartFlash(card);
   $('alert-icon').textContent = icon;
   $('alert-tier').textContent = tierLabel;
-  $('alert-text').textContent = ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.lo;
-  $('alert-meta').textContent = ev.approach ? `↗ Getting closer · ${meta}` : meta;
+  $('alert-text').textContent = lo(ev);
+  $('alert-meta').textContent = metaOf(ev, meta);
   $('btn-wrong').hidden = !canMarkWrong;
   const canSnooze = ev.source !== 'test' && ev.tier !== 'danger';
   $('btn-snooze').hidden = !canSnooze;
@@ -356,8 +398,8 @@ function showAlert(ev) {
     overlay.className = `overlay tier-${ev.tier}`;
     $('ov-tier').textContent = `${TIERS[ev.tier].icon} ${tierLabel}`;
     $('ov-icon').textContent = icon;
-    $('ov-text').textContent = ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.lo;
-    $('ov-meta').textContent = ev.approach ? `↗ Getting closer · ${meta}` : meta;
+    $('ov-text').textContent = lo(ev);
+    $('ov-meta').textContent = metaOf(ev, meta);
     $('ov-wrong').hidden = !canMarkWrong;
     overlay.hidden = false;
     restartFlash(overlay);
@@ -397,7 +439,11 @@ function markWrong() {
     if (m.wrongConf.length > 50) m.wrongConf.shift();
   }
   const ev = log.find((e) => e.id === shown.id);
-  if (ev) ev.wrong = true;
+  if (ev) {
+    ev.wrong = true;
+    const rec = timeline.find((r) => r.t === ev.t && r.key === ev.key);
+    if (rec) { rec.wrong = true; saveTimeline(timeline); renderToday(); }
+  }
   if (shown.source === 'personal' && shown.emb) learnFromWrong(shown);
   saveMetrics();
   renderEvents();
@@ -683,6 +729,19 @@ function bindSettings() {
   checkbox('set-info', () => settings.showInfo, (v) => { settings.showInfo = v; });
   checkbox('set-vib-info', () => settings.vibrateInfo, (v) => { settings.vibrateInfo = v; });
   checkbox('set-llm', () => settings.narration.enabled, (v) => { settings.narration.enabled = v; });
+  checkbox('set-flash', () => settings.flash, async (v) => {
+    settings.flash = v && (await flash.enable());
+    $('set-flash').checked = settings.flash;
+    if (!v) flash.disable();
+    saveSettings();
+  });
+  if (band.supported) {
+    $('btn-band').hidden = false;
+    $('btn-band').addEventListener('click', async () => {
+      const ok = await band.connect();
+      $('btn-band').textContent = ok ? 'ເຊື່ອມຕໍ່ແລ້ວ ✓ Band connected' : 'ເຊື່ອມຕໍ່ບໍ່ໄດ້ · Could not connect';
+    });
+  }
   checkbox('set-notify', () => settings.notify, async (v) => {
     settings.notify = v;
     if (v && 'Notification' in window && Notification.permission === 'default') await Notification.requestPermission();
@@ -904,3 +963,26 @@ refreshSounds().then(loadPack);
 if (!settings.guideSeen) openGuide();
 // Load the model in the background so "Start" is instant.
 getYamnet().catch((err) => console.error('[DeafSound] model load failed', err));
+
+
+// ── "someone calls my name" preset ──────────────────────────────────────────
+
+$('btn-preset-name').addEventListener('click', () => {
+  $('reg-name').value = 'ມີຄົນເອີ້ນຊື່ຂ້ອຍ';
+  document.querySelector('#reg-tier input[value="caution"]').checked = true;
+  regStatus('ໃຫ້ຄົນຕ່າງກັນເອີ້ນຊື່ທ່ານ 3 ຄັ້ງ (ໃກ້ໆ ແລະ ດັງປົກກະຕິ) ແລ້ວກົດອັດສຽງ');
+  $('reg-name').focus();
+});
+
+// ── today summary ───────────────────────────────────────────────────────────
+
+function renderToday() {
+  const s = summarize(timeline);
+  const body = $('today-body');
+  if (s.total === 0) { body.textContent = 'ມື້ນີ້ຍັງບໍ່ມີສຽງເຕືອນ · No alerts yet today'; return; }
+  const top = s.top.map((g) => `${g.icon ?? ''} ${g.lo} ×${g.count}`).join('  ·  ');
+  body.textContent = `ທັງໝົດ ${s.total} · ອັນຕະລາຍ ${s.danger} · ລະວັງ ${s.caution} · ຂໍ້ມູນ ${s.info}`
+    + (s.critical ? ` · ‼ ${s.critical}` : '') + (s.approaching ? ` · ↗ ${s.approaching}` : '') + `\n${top}`;
+  body.style.whiteSpace = 'pre-line';
+}
+renderToday();

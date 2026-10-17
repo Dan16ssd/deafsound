@@ -51,6 +51,11 @@
       <h2>ສຽງທີ່ຜ່ານມາ <small>Recent</small></h2>
       <ol id="events" class="events"></ol>
 
+      <details id="today" class="debug">
+        <summary>ມື້ນີ້ <small>Today · summary</small></summary>
+        <div id="today-body" class="muted"></div>
+      </details>
+
       <details id="debug" class="debug">
         <summary>Debug · YAMNet</summary>
         <div id="debug-stats" class="mono"></div>
@@ -67,6 +72,7 @@
       </div>
 
       <h2>ເພີ່ມສຽງຂອງຂ້ອຍ <small>Register a sound</small></h2>
+      <button id="btn-preset-name" class="btn btn-wide">📣 ສຽງຄົນເອີ້ນຊື່ຂ້ອຍ <small>Someone calls my name</small></button>
       <div class="card">
         <label class="field">
           <span>ຊື່ສຽງ <small>Name</small></span>
@@ -102,6 +108,8 @@
         </label>
         <label class="check"><input id="set-info" type="checkbox"> <span>ສະແດງສຽງລະດັບ “ຂໍ້ມູນ” <small>Show info tier</small></span></label>
         <label class="check"><input id="set-vib-info" type="checkbox"> <span>ສັ່ນສຳລັບ “ຂໍ້ມູນ” <small>Vibrate for info</small></span></label>
+        <label class="check"><input id="set-flash" type="checkbox"> <span>ກະພິບໄຟສາຍ ເມື່ອມີສຽງເຕືອນ <small>Flash the camera light on alerts</small></span></label>
+        <button id="btn-band" class="btn btn-wide" hidden>ເຊື່ອມຕໍ່ສາຍແຮງສັ່ນ (Bluetooth) <small>Connect vibrating band</small></button>
         <label class="check"><input id="set-notify" type="checkbox"> <span>ແຈ້ງເຕືອນເມື່ອປິດໜ້າຈໍ <small>Notify when app is in background</small></span></label>
         <div class="row">
           <button class="btn" data-test="danger">ທົດສອບ ອັນຕະລາຍ</button>
