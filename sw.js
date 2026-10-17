@@ -1,6 +1,6 @@
 // Offline cache for the app shell, TensorFlow.js and the YAMNet model.
 // Only same-origin GETs are cached. The narration POST is never touched.
-const CACHE = 'deafsound-v11';
+const CACHE = 'deafsound-v12';
 
 const ASSETS = [
   './',
@@ -51,9 +51,25 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// App code (html/css/js/json) is network-first so a new release shows on the next
+// load, falling back to the cache offline. The big static files (model, TensorFlow.js)
+// stay cache-first so they are not re-downloaded.
+const isShell = (url) => /(\/|\.html|\.css|\.js|\.webmanifest|\.svg)$/.test(url.pathname) && !url.pathname.startsWith('/vendor/');
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (isShell(url)) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' })
+        .then((res) => {
+          if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+          return res;
+        })
+        .catch(() => caches.match(e.request, { ignoreSearch: true })),
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then((hit) => hit ?? fetch(e.request)),
   );
