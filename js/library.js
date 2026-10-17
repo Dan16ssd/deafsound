@@ -70,6 +70,7 @@ export function buildSound({ name, tier, clipVecs, registerMs }) {
     name,
     tier,
     centroid: Array.from(centroid),
+    clips: clipVecs.map((v) => Array.from(v)), // kept so the verifier head can be (re)trained
     threshold: Math.round(threshold * 100) / 100,
     pairMin: Math.round(pairMin * 1000) / 1000,
     registerMs,
@@ -83,6 +84,7 @@ export class PersonalMatcher {
   constructor() {
     this.sounds = [];
     this.bg = null;
+    this.verify = null; // optional (sound, normalizedEmbedding) → 0..1 from the head model
   }
 
   setSounds(list) {
@@ -95,8 +97,11 @@ export class PersonalMatcher {
     const bgSim = this.bg ? dot(e, this.bg) : 0;
     const results = this.sounds.map((s) => {
       const sim = dot(e, s.vec);
-      const hit = liveRms >= MIN_LIVE_RMS && sim >= s.threshold && sim - bgSim >= BG_MARGIN;
-      return { sound: s, sim, hit };
+      const cosHit = liveRms >= MIN_LIVE_RMS && sim >= s.threshold && sim - bgSim >= BG_MARGIN;
+      // Second opinion: the learned head can veto a cosine match.
+      const headP = cosHit && this.verify ? this.verify(s, e) : 1;
+      const hit = cosHit && headP >= 0.5;
+      return { sound: s, sim, hit, headP, vetoed: cosHit && !hit };
     });
     // Slow running average of ambient sound (~20 s), frozen during matches so
     // a repeated target doesn't become "background".

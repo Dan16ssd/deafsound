@@ -86,6 +86,18 @@ once, even inside the cooldown, with a stronger 3-part buzz and "ກຳລັງ
 a deaf pedestrian which vehicle is heading toward them, which direction-free detection can't. It re-alerts at most every 8 s per sound.
 It is a loudness heuristic, not distance measurement: a source that simply gets louder (an engine revving in place) can trigger it too.
 
+### Second model: verifier head, risk fusion, snooze
+
+- **Verifier head** (`js/head.js`): each personal sound gets a small logistic-regression model over the 1024-d YAMNet embedding,
+  trained on-device in ~100 ms from its 3 clips (augmented with jitter and background mixes) against the app's own recent
+  background sounds and the user's other sounds. A cosine match must also pass the head (p ≥ 0.5). When the user taps **Wrong** on a
+  personal alert, that embedding becomes a weighted hard negative and the head retrains, so false alarms teach it.
+  The head only knows the background it has heard, so it refines near-misses; the cosine match still handles far-off sounds.
+  Starter-pack sounds get a head once ~12 background samples exist. Nothing leaves the phone.
+- **Risk fusion** (`js/risk.js`): tier + confidence + "getting closer" + loudness → urgency score. At *critical* (e.g. a loud, confident
+  horn that is approaching) the phone uses a longer 4-part buzz and the alert is marked ‼.
+- **Snooze**: caution/info alerts get a 10-minute snooze button (for a known repetitive sound). Danger-tier sounds can never be snoozed.
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

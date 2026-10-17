@@ -2,6 +2,8 @@ import { MicStream, RingBuffer, rms, SAMPLE_RATE } from './audio.js';
 import { loadYamnet, WINDOW } from './yamnet.js';
 import { TIERS, GROUPS, PERSONAL_ICON } from './labels.js';
 import { LevelTrend, APPROACH } from './approach.js';
+import { BackgroundPool, HEAD, headProb, withHead, addHardNegative } from './head.js';
+import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
   PersonalMatcher, clipVector, consistency, buildSound,
@@ -57,6 +59,7 @@ const pushCapped = (arr, v, n = 200) => { arr.push(Math.round(v)); if (arr.lengt
 
 const ring = new RingBuffer(SAMPLE_RATE * 4);
 const matcher = new PersonalMatcher();
+matcher.verify = (sound, e) => headProb(sound.head, e);
 const cooldown = new Cooldown();
 const log = [];                 // recent events, in memory only
 let yamnetPromise = null;
@@ -175,6 +178,10 @@ document.addEventListener('click', () => {
 });
 
 const trend = new LevelTrend();
+const bgPool = new BackgroundPool();
+const snooze = new Snooze();
+let lastLevel = 0;
+let poolTick = 0;
 const approachAlerted = new Map(); // key → time of last escalation
 let noiseFloor = 0;
 let burstUntil = 0;
@@ -213,6 +220,7 @@ async function infer() {
     const win = ring.latest(WINDOW);
     const liveRms = rms(win);
     trend.push(Date.now(), liveRms);
+    lastLevel = liveRms;
     const t0 = performance.now();
     const { scores, embedding } = await yam.classify(win);
     const inferMs = performance.now() - t0;
@@ -223,9 +231,15 @@ async function infer() {
     if (matcher.sounds.length) {
       const { results } = matcher.match(embedding, liveRms);
       for (const r of results) {
-        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', icon: PERSONAL_ICON, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
+        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', emb: embedding, icon: PERSONAL_ICON, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
       }
       updateLiveSims(results);
+      // Feed the background pool from non-matching moments (~2/s), then train
+      // heads for sounds that don't have one yet.
+      if (!results.some((r) => r.hit) && liveRms > 0.002 && ++poolTick % 5 === 0) {
+        bgPool.add(embedding);
+        if (bgPool.items.length === HEAD.minNegatives) trainMissingHeads();
+      }
     }
 
     handleCandidates(rankCandidates(cands), arrivedAt);
@@ -240,8 +254,9 @@ async function infer() {
 }
 
 function handleCandidates(cands, arrivedAt) {
-  if (cands.length === 0) return;
   const now = Date.now();
+  cands = cands.filter((c) => !snooze.isSnoozed(c.key, now));
+  if (cands.length === 0) return;
 
   // Same sound still going → keep it on screen.
   if (shown && cands.some((c) => c.key === shown.key)) extendHold();
@@ -251,9 +266,10 @@ function handleCandidates(cands, arrivedAt) {
   const mover = cands.find((c) => GROUP_BY_ID.get(c.group)?.moving && c.tier !== 'info');
   if (mover && trend.state() === 'approaching' && now - (approachAlerted.get(mover.key) ?? 0) > APPROACH.realertMs) {
     approachAlerted.set(mover.key, now);
-    const ev = { ...mover, approach: true, t: now, id: `${now}-${mover.key}-approach` };
+    const risk = assessRisk({ tier: mover.tier, confidence: mover.confidence, approaching: true, level: lastLevel });
+    const ev = { ...mover, approach: true, risk, t: now, id: `${now}-${mover.key}-approach` };
     log.push(ev);
-    navigator.vibrate?.(APPROACH.vibrate);
+    navigator.vibrate?.(risk.level === 'critical' ? vibrationFor(mover.tier, risk) : APPROACH.vibrate);
     showAlert(ev);
     renderEvents();
     return;
@@ -263,7 +279,7 @@ function handleCandidates(cands, arrivedAt) {
   if (fresh.length === 0) return;
 
   for (const c of fresh) {
-    const ev = { ...c, t: now, id: `${now}-${c.key}` };
+    const ev = { ...c, risk: assessRisk({ tier: c.tier, confidence: c.confidence, level: lastLevel }), t: now, id: `${now}-${c.key}` };
     log.push(ev);
     const m = (metrics.alerts[c.key] ??= { label: c.lo, tier: c.tier, count: 0, wrong: 0 });
     m.count++;
@@ -275,7 +291,7 @@ function handleCandidates(cands, arrivedAt) {
   if (!outranked) {
     const shouldVibrate = top.tier !== 'info' || settings.vibrateInfo;
     if (shouldVibrate) {
-      navigator.vibrate?.(TIERS[top.tier].vibrate);
+      navigator.vibrate?.(vibrationFor(top.tier, top.risk));
       pushCapped(metrics.latencyMs, performance.now() - arrivedAt);
     }
     showAlert(top);
@@ -298,7 +314,7 @@ function restartFlash(el) {
 function showAlert(ev) {
   shown = ev;
   const icon = ev.icon ?? TIERS[ev.tier].icon;
-  const tierLabel = `${TIERS[ev.tier].lo}${ev.source === 'personal' ? ' · ສຽງຂອງຂ້ອຍ' : ''}`;
+  const tierLabel = `${ev.risk?.level === 'critical' ? '‼ ' : ''}${TIERS[ev.tier].lo}${ev.source === 'personal' ? ' · ສຽງຂອງຂ້ອຍ' : ''}`;
   const meta = `${ev.en} · ${Math.round(ev.confidence * 100)}%`;
   const canMarkWrong = ev.source !== 'test';
 
@@ -310,6 +326,9 @@ function showAlert(ev) {
   $('alert-text').textContent = ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.lo;
   $('alert-meta').textContent = ev.approach ? `↗ Getting closer · ${meta}` : meta;
   $('btn-wrong').hidden = !canMarkWrong;
+  const canSnooze = ev.source !== 'test' && ev.tier !== 'danger';
+  $('btn-snooze').hidden = !canSnooze;
+  $('ov-snooze').hidden = !canSnooze;
 
   // Danger and caution take over the whole screen; info stays in the card so
   // everyday sounds like speech don't keep covering the app.
@@ -347,6 +366,7 @@ function showIdle(text, meta) {
   $('alert-text').textContent = text ?? (mic ? 'ກຳລັງຟັງ…' : 'ກົດ “ເລີ່ມຟັງ”');
   $('alert-meta').textContent = meta ?? (mic ? 'ບໍ່ມີສຽງທີ່ຕ້ອງລະວັງ · Listening' : 'Tap Start to listen');
   $('btn-wrong').hidden = true;
+  $('btn-snooze').hidden = true;
 }
 
 function markWrong() {
@@ -359,6 +379,7 @@ function markWrong() {
   }
   const ev = log.find((e) => e.id === shown.id);
   if (ev) ev.wrong = true;
+  if (shown.source === 'personal' && shown.emb) learnFromWrong(shown);
   saveMetrics();
   renderEvents();
   showIdle();
@@ -367,6 +388,34 @@ function markWrong() {
 $('btn-wrong').addEventListener('click', markWrong);
 $('ov-wrong').addEventListener('click', markWrong);
 $('ov-close').addEventListener('click', () => showIdle());
+function snoozeShown() {
+  if (shown && snooze.snooze(shown.key, shown.tier, Date.now())) showIdle('ປິດສຽງນີ້ 10 ນາທີ', 'Snoozed for 10 minutes');
+}
+$('btn-snooze').addEventListener('click', snoozeShown);
+$('ov-snooze').addEventListener('click', snoozeShown);
+
+// ── verifier head (second model) ────────────────────────────────────────────
+
+const otherCentroids = (id) => matcher.sounds.filter((x) => x.id !== id).map((x) => x.centroid);
+
+async function trainMissingHeads() {
+  for (const s of matcher.sounds) {
+    if (s.head) continue;
+    await putSound(withHead(stored(s), bgPool.items, otherCentroids(s.id)));
+  }
+  matcher.setSounds(await listSounds());
+}
+
+async function learnFromWrong(ev) {
+  const id = ev.key.slice('personal:'.length);
+  const s = matcher.sounds.find((x) => x.id === id);
+  if (!s) return;
+  await putSound(addHardNegative(stored(s), ev.emb, bgPool.items, otherCentroids(id)));
+  matcher.setSounds(await listSounds());
+}
+
+// matcher.sounds carry a derived `vec`; strip it before saving.
+function stored({ vec, ...rest }) { return rest; }
 
 async function notify(ev) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -521,7 +570,7 @@ $('btn-save').addEventListener('click', async () => {
   if (!name) { regStatus('ໃສ່ຊື່ສຽງກ່ອນ'); $('reg-name').focus(); return; }
   const tier = document.querySelector('#reg-tier input:checked').value;
   const registerMs = Math.round(performance.now() - reg.firstTap);
-  const sound = buildSound({ name, tier, clipVecs: reg.clips, registerMs });
+  const sound = withHead(buildSound({ name, tier, clipVecs: reg.clips, registerMs }), bgPool.items, otherCentroids(null));
   await putSound(sound);
   metrics.registrations.push({ name, tier, registerMs, pairMin: sound.pairMin, threshold: sound.threshold, at: Date.now() });
   saveMetrics();

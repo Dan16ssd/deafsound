@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 
 import { TIERS, GROUPS } from '../js/labels.js';
 import { yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestThreshold } from '../js/detector.js';
+import { BackgroundPool, headProb, withHead, addHardNegative, HEAD } from '../js/head.js';
+import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
 import { rms, RingBuffer, CHUNK_SECONDS } from '../js/audio.js';
@@ -284,4 +286,68 @@ test('approach: only travelling sources are flagged moving', () => {
   const moving = GROUPS.filter((g) => g.moving).map((g) => g.id);
   for (const id of ['horn', 'siren', 'motorbike', 'vehicle_pass', 'train']) assert.ok(moving.includes(id), id);
   for (const id of ['doorbell', 'speech', 'dog']) assert.ok(!moving.includes(id), id);
+});
+
+// ── verifier head (second model) ────────────────────────────────────────────
+
+async function embed(w) { return L.normalize((await yam.classify(w)).embedding); }
+
+test('head: learns doorbell vs background, then learns from a flagged false alarm', async () => {
+  const sound = await registerDoorbell();
+  assert.equal(sound.clips.length, 3);
+  const pool = new BackgroundPool();
+  for (let i = 0; i < 30; i++) pool.add(await embed(noise(WINDOW, 0.01 + 0.002 * i)));
+  assert.equal(withHead(sound, pool.items.slice(0, HEAD.minNegatives - 1)).head, undefined, 'too little background → no head');
+
+  const trained = withHead(sound, pool.items);
+  assert.ok(trained.head, 'head trained');
+  const bell = await embed(mix(dingdong(WINDOW, 1600, 0.25, 0.997), noise(WINDOW, 0.02)));
+  const ambient = await embed(noise(WINDOW, 0.02));
+  assert.ok(headProb(trained.head, bell) > 0.5, `doorbell p=${headProb(trained.head, bell)}`);
+  assert.ok(headProb(trained.head, ambient) < 0.5, 'ambient');
+  assert.equal(headProb(null, bell), 1, 'no head never vetoes');
+
+  // A similar chime the user flags as wrong becomes a hard negative.
+  const similar = await embed(mix(dingdong(WINDOW, 1600, 0.25, 1.15), noise(WINDOW, 0.02)));
+  const before = headProb(trained.head, similar);
+  const learned = addHardNegative(trained, similar, pool.items);
+  const after = headProb(learned.head, similar);
+  assert.ok(after < before || after < 0.5, `false alarm p ${before} → ${after}`);
+  assert.ok(headProb(learned.head, bell) > 0.5, 'still hears the real doorbell');
+  assert.equal(learned.hardNeg.length, 1);
+});
+
+test('head: matcher lets the head veto a cosine hit', async () => {
+  const sound = await registerDoorbell();
+  const m = new L.PersonalMatcher();
+  m.setSounds([sound]);
+  m.verify = () => 0.1;
+  assert.equal(await anyHit(m, (at) => mix(dingdong(WINDOW, at, 0.25, 0.997), noise(WINDOW, 0.02))), false, 'vetoed');
+  m.verify = () => 0.9;
+  assert.equal(await anyHit(m, (at) => mix(dingdong(WINDOW, at, 0.25, 0.997), noise(WINDOW, 0.02))), true, 'confirmed');
+});
+
+// ── risk fusion & snooze ────────────────────────────────────────────────────
+
+test('risk: approaching + loud danger is critical; quiet info is low; vibration scales', () => {
+  const calm = assessRisk({ tier: 'danger', confidence: 0.4, level: 0.01 });
+  const close = assessRisk({ tier: 'danger', confidence: 0.9, approaching: true, level: 0.2 });
+  assert.ok(close.score > calm.score);
+  assert.equal(close.level, 'critical');
+  assert.ok(close.reasons.includes('approaching'));
+  assert.notEqual(calm.level, 'critical');
+  assert.equal(assessRisk({ tier: 'info', confidence: 0.6, level: 0.01 }).level, 'low');
+  assert.ok(assessRisk({ tier: 'caution', confidence: 1, approaching: true, level: 1 }).score <= 1);
+  assert.deepEqual(vibrationFor('danger', close), RISK.vibrateCritical);
+  assert.deepEqual(vibrationFor('danger', calm), TIERS.danger.vibrate);
+  assert.deepEqual(vibrationFor('caution', { level: 'high' }), TIERS.caution.vibrate);
+});
+
+test('snooze: works for caution/info, expires, never for danger', () => {
+  const s = new Snooze();
+  assert.equal(s.snooze('yamnet:dog', 'caution', 1000, 5000), true);
+  assert.equal(s.isSnoozed('yamnet:dog', 3000), true);
+  assert.equal(s.isSnoozed('yamnet:dog', 6001), false, 'expired');
+  assert.equal(s.snooze('yamnet:horn', 'danger', 0), false);
+  assert.equal(s.isSnoozed('yamnet:horn', 1), false);
 });
