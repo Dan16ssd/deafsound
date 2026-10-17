@@ -42,7 +42,7 @@ export class Spectrogram {
     this.g = canvas.getContext('2d');
     this.px = 3;                 // width of one time column
     this.tier = 'idle';
-    this.g.fillStyle = '#000';
+    this.g.fillStyle = '#0a1233';
     this.g.fillRect(0, 0, canvas.width, canvas.height);
   }
 

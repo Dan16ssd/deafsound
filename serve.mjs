@@ -37,6 +37,7 @@ const types = {
   '.json': 'application/json',
   '.webmanifest': 'application/manifest+json',
   '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
   '.csv': 'text/csv; charset=utf-8',
   '.bin': 'application/octet-stream',
 };
@@ -44,7 +45,7 @@ const types = {
 // Allowlist of what the app needs. A blocklist is unsafe here: Windows paths
 // are case-insensitive, so "/CERTS/dev-key.pem" would slip past it.
 const ALLOWED_FILES = new Set(['index.html', 'styles.css', 'manifest.webmanifest', 'icon.svg', 'sw.js']);
-const ALLOWED_DIRS = ['js/', 'model/', 'vendor/', 'packs/'];
+const ALLOWED_DIRS = ['js/', 'model/', 'vendor/', 'packs/', 'fonts/'];
 function isAllowed(file) {
   const rel = path.relative(root, file).split(path.sep).join('/').toLowerCase();
   if (rel.startsWith('..') || path.isAbsolute(rel)) return false;

@@ -152,10 +152,12 @@ Not built from the plan: a second pretrained ensemble model (needs a model downl
 
 ### Glass look
 
-`styles.css` ends with a glassmorphism layer: frosted translucent surfaces over a fixed gradient-mesh background, light and dark.
-Surfaces stay dense enough for WCAG AA (worst case over the mesh: body text 13.7:1 light / 7.3:1 dark, muted text 6.3:1 / 5.4:1, alert
-tiers ≥ 5.2:1, primary button ≥ 5.3:1). It falls back to the solid theme without `backdrop-filter` or with
-`prefers-reduced-transparency`.
+`styles.css` ends with a liquid-glass layer, applied selectively: glass on the top bar, tab bar, live alert, full-screen alerts/modes and
+the mode tiles, with luminous gradient edges over a three-light gradient mesh. Dense content (lists, settings, forms) sits on calmer,
+mostly opaque panels so text keeps contrast. Primary is #1856FF; Plus Jakarta Sans (self-hosted in `fonts/`, Latin only) leads the font
+stack and Lao falls through to the Noto Sans Lao stack. Hover only applies on pointer devices; focus-visible, active and disabled states
+are explicit. It falls back to solid surfaces without `backdrop-filter`, and under `prefers-contrast: more` or
+`prefers-reduced-transparency`. Alert tiers keep their AA text colours (≥ 5.2:1).
 
 ### Screen-on listening
 
