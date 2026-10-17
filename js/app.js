@@ -11,7 +11,7 @@ import { loadTimeline, saveTimeline, addRecord, summarize } from './timeline.js'
 import { Spectrogram, bandLevels, cellColor } from './viz.js';
 import { demoScenario, DEMO_SECONDS } from './demo.js';
 import { CrossingController } from './crossing.js';
-import { HeadingMap, compassHeading, levelOf, turn, closeness, hotCold, norm360 } from './finder.js';
+import { HeadingMap, compassHeading, levelOf, turn, closeness, norm360 } from './finder.js';
 import { GUARDIAN, guardianFilter, NightSession } from './guardian.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { Persistence, yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
@@ -1106,7 +1106,7 @@ const MODE_INFO = {
   },
   finder: {
     icon: '🧭', title: 'ຫາທິດທາງສຽງ · Find the sound',
-    note: 'ຖືໂທລະສັບໃຫ້ຮາບ ແລ້ວຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ. ຜົນເປັນການຄາດຄະເນ.\nHold the phone flat and turn slowly all the way round. Approximate.',
+    note: '1) ໃຫ້ສຽງດັງຢູ່  2) ຖືໂທລະສັບ ແລ້ວຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ  3) ຍ່າງຕາມລູກສອນ\n1) Keep the sound playing  2) Hold the phone and turn slowly all the way round  3) Follow the arrow. Approximate.',
   },
   guardian: {
     icon: '🌙', title: 'ເຝົ້າກາງຄືນ · Night guardian',
@@ -1137,6 +1137,7 @@ async function enterMode(name) {
   $('mode-sub').textContent = '';
   $('mode-compass').hidden = name !== 'finder';
   $('mode-icon').hidden = name === 'finder';
+  $('mode-rescan').hidden = true;
   $('mode-exit').focus({ preventScroll: true });
 
   if (name === 'crossing') {
@@ -1144,7 +1145,7 @@ async function enterMode(name) {
     setCross('clear');
     modeTimers.push(setInterval(crossingTick, 50));
   } else if (name === 'finder') {
-    finder.reset(); heading = null;
+    heading = null; finderReset();
     $('mode-status').textContent = 'ກຳລັງເລີ່ມ… Starting';
     await startCompass();
     modeTimers.push(setInterval(finderTick, 100));
@@ -1247,37 +1248,69 @@ function finderSample(level) {
   // Target known: its loudness weighted by how sure the classifier is it is playing now.
   // Unknown: loudness above the room's noise floor, so steady noise cancels out.
   const lvl = finderTarget ? levelOf(level) * finderGate : Math.max(0, levelOf(level) - levelOf(noiseFloor * 1.2));
-  finder.add(heading, lvl, performance.now());
+  const ok = finder.add(heading, lvl, performance.now());
+  if (!ok) tooFastAt = performance.now();
+  if (lvl > 0.04) heardAt = performance.now();
 }
 
+// Three clear steps: 1 scan (turn all the way round, a ring fills), 2 result (one locked arrow),
+// 3 unclear (say so plainly and offer a rescan). Hot/cold is only a haptic tick, never text.
+let finderPhase = 'scan';
+let lastGood = null;       // last confident answer, kept briefly so the arrow doesn't flicker
+let lastGoodAt = 0;
+let tooFastAt = 0;
+let heardAt = 0;
 let nextTick = 0;
+const SCAN_BINS = 30;      // of 36 bins (≈ 300°) before an answer is given
+
+function finderReset() {
+  finder.reset();
+  finderPhase = 'scan'; lastGood = null; tooFastAt = 0; heardAt = 0;
+  $('mode-rescan').hidden = true;
+}
+
 function finderTick() {
   const status = $('mode-status'), sub = $('mode-sub');
   if (heading === null || performance.now() - lastHeadingAt > 1500) {
     status.textContent = 'ບໍ່ພົບເຂັມທິດ';
-    sub.textContent = 'No compass sensor available on this device';
+    sub.textContent = 'No compass sensor on this device, so this mode cannot work here.';
     return;
   }
-  const best = finder.best();
-  if (!best) {
-    status.textContent = '🔄 ຫັນຕົວຊ້າໆ';
-    sub.textContent = `Turn slowly · ${Math.round((finder.coverage() / 36) * 100)}%`;
-    return;
-  }
-  if (best.heading === null) {
-    status.textContent = '🌫️ ຍັງບໍ່ຊັດເຈນ';
-    sub.textContent = 'Sound seems to come from everywhere';
-    return;
-  }
-  const c = closeness(heading, best.heading);
-  const hc = hotCold(c);
-  status.textContent = { hot: '🔥 ທາງນີ້!', warm: '♨️ ໃກ້ແລ້ວ', cool: '🌤️ ຫັນໄປອີກ', cold: '❄️ ຜິດທາງ' }[hc];
-  sub.textContent = `${{ hot: 'Straight ahead', warm: 'Getting warmer', cool: 'Keep turning', cold: 'Wrong way' }[hc]} · ±${Math.round(best.width / 2)}° · ${finderTarget ? finderTarget.en : 'any sound'}`;
   const now = performance.now();
-  if (c > 0.6 && now >= nextTick) {
-    navigator.vibrate?.([c > 0.85 ? 90 : 30]);
-    nextTick = now + 700 - 520 * c;
+  const cover = finder.coverage();
+
+  if (finderPhase === 'scan') {
+    if (cover >= SCAN_BINS) {
+      const best = finder.best();
+      if (best?.heading != null) { finderPhase = 'result'; lastGood = best; lastGoodAt = now; }
+      else { finderPhase = 'unclear'; }
+    } else {
+      $('mode-rescan').hidden = true;
+      if (now - tooFastAt < 1200) { status.textContent = '🐢 ຊ້າລົງ'; sub.textContent = 'Slower: turn gently'; }
+      else if (now - heardAt > 3000 && cover > 3) { status.textContent = '🔇 ບໍ່ໄດ້ຍິນສຽງ'; sub.textContent = 'No sound heard. Keep the sound playing, then turn.'; }
+      else { status.textContent = '🔄 ຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ'; sub.textContent = `Turn slowly all the way round · ${Math.round((cover / 36) * 100)}%`; }
+      return;
+    }
   }
+
+  if (finderPhase === 'result') {
+    const best = finder.best();
+    if (best?.heading != null) { lastGood = best; lastGoodAt = now; }
+    else if (now - lastGoodAt > 6000) { finderPhase = 'unclear'; }
+    if (finderPhase === 'result') {
+      $('mode-rescan').hidden = false;
+      status.textContent = '👉 ສຽງຢູ່ທາງນີ້';
+      sub.textContent = `Follow the arrow · ±${Math.round(lastGood.width / 2)}° · ${finderTarget ? finderTarget.en : 'any sound'}`;
+      const c = closeness(heading, lastGood.heading);
+      if (c > 0.7 && now >= nextTick) { navigator.vibrate?.([c > 0.9 ? 90 : 30]); nextTick = now + 650 - 450 * c; }
+      return;
+    }
+  }
+
+  // unclear
+  $('mode-rescan').hidden = false;
+  status.textContent = '🌫️ ຍັງບໍ່ຊັດເຈນ';
+  sub.textContent = 'Could not tell. Move closer to the sound or reduce other noise, then scan again.';
 }
 
 function drawCompass() {
@@ -1286,37 +1319,39 @@ function drawCompass() {
   const cv = $('mode-compass'), g = cv.getContext('2d');
   const W = cv.width, cx = W / 2, cy = W / 2, n = finder.cfg.bins;
   const css = getComputedStyle(document.documentElement);
+  const accent = css.getPropertyValue('--accent').trim() || '#5b9bff';
   g.clearRect(0, 0, W, W);
   const h = heading ?? 0;
-  for (let i = 0; i < n; i++) {
-    const a0 = ((i * 360 / n - h - 90) * Math.PI) / 180, a1 = (((i + 1) * 360 / n - h - 90) * Math.PI) / 180;
+  const ang = (deg) => ((deg - h - 90) * Math.PI) / 180;
+  for (let i = 0; i < n; i++) {                        // the ring: fills as the user turns
     g.beginPath();
-    g.arc(cx, cy, W * 0.46, a0, a1);
-    g.arc(cx, cy, W * 0.33, a1, a0, true);
+    g.arc(cx, cy, W * 0.46, ang(i * 360 / n), ang((i + 1) * 360 / n));
+    g.arc(cx, cy, W * 0.38, ang((i + 1) * 360 / n), ang(i * 360 / n), true);
     g.closePath();
-    g.fillStyle = finder.seen[i] ? cellColor(Math.min(1, finder.v[i] * 1.2), 'danger') : 'rgba(128,128,128,0.18)';
+    g.fillStyle = finder.solid(i) ? accent : 'rgba(128,128,128,0.22)';
+    g.globalAlpha = finderPhase === 'scan' ? 1 : 0.35;
     g.fill();
   }
-  const best = finder.best();
-  if (best?.heading != null) {
-    const rel = (turn(h, best.heading) * Math.PI) / 180;
-    const half = ((best.width / 2) * Math.PI) / 180;
-    g.beginPath();                                   // the zone the sound probably comes from
+  g.globalAlpha = 1;
+  if (finderPhase === 'result' && lastGood) {
+    const rel = (turn(h, lastGood.heading) * Math.PI) / 180;
+    const half = ((lastGood.width / 2) * Math.PI) / 180;
+    g.beginPath();                                     // the zone the sound probably comes from
     g.moveTo(cx, cy);
     g.arc(cx, cy, W * 0.46, rel - Math.PI / 2 - half, rel - Math.PI / 2 + half);
     g.closePath();
-    g.fillStyle = 'rgba(255, 196, 77, 0.35)';
+    g.fillStyle = 'rgba(255, 196, 77, 0.38)';
     g.fill();
     g.save();
     g.translate(cx, cy);
     g.rotate(rel);
-    g.fillStyle = css.getPropertyValue('--accent') || '#5b9bff';
+    g.fillStyle = accent;
     g.beginPath();
-    g.moveTo(0, -W * 0.3); g.lineTo(W * 0.1, W * 0.04); g.lineTo(0, -W * 0.02); g.lineTo(-W * 0.1, W * 0.04);
+    g.moveTo(0, -W * 0.34); g.lineTo(W * 0.13, W * 0.06); g.lineTo(0, -W * 0.02); g.lineTo(-W * 0.13, W * 0.06);
     g.closePath(); g.fill();
     g.restore();
   }
-  g.fillStyle = css.getPropertyValue('--text') || '#fff';   // "phone points here" marker
+  g.fillStyle = css.getPropertyValue('--text').trim() || '#fff';   // "phone points here" marker
   g.beginPath(); g.moveTo(cx, 4); g.lineTo(cx - 9, 22); g.lineTo(cx + 9, 22); g.closePath(); g.fill();
 }
 
@@ -1344,3 +1379,4 @@ function guardianRepeat() {
 $('ov-close').addEventListener('click', () => { guardianEv = null; flash.cancel(); });
 document.querySelectorAll('.mode-btn').forEach((b) => b.addEventListener('click', () => enterMode(b.dataset.mode)));
 $('mode-exit').addEventListener('click', exitMode);
+$('mode-rescan').addEventListener('click', finderReset);
