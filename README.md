@@ -142,9 +142,14 @@ Not built from the plan: a second pretrained ensemble model (needs a model downl
   "getting closer" / Doppler cues combine into a proximity value; the phone beats slowly when a vehicle is first heard and faster and
   stronger as it nears, then gives a long "step back" pattern and a red screen. Green means *no vehicle sound heard*, **not** safe:
   the screen says to look both ways. Vehicle alerts are handled by this mode while it is on.
-- **🧭 Find the sound** (`js/finder.js`): a hot/cold compass. A phone mic can't tell direction, so the user turns slowly while the app
-  records loudness per compass heading (10° bins, older readings fade); an arrow points to the loudest heading and the phone ticks faster
-  when it faces it. It uses the device orientation sensor (Android Chrome; iOS asks permission) and says so when there is none. Approximate.
+- **🧭 Find the sound** (`js/finder.js`): a hot/cold compass. A phone has one mic, so it cannot hear direction; the user turns slowly
+  while the app records loudness per compass heading (10° bins, 60 s half-life) and an arrow plus a yellow zone point at the loudest
+  heading; the phone ticks faster when it faces it. To keep it as accurate as a single mic allows: the heading comes from the full
+  orientation angles (right at any tilt) and only the compass event is used once it fires; readings taken while turning faster than
+  80°/s are dropped; only the sound that last alerted counts (its loudness × the classifier's confidence), or, with no target, loudness
+  above the room's noise floor; bins need 3 samples; a near-flat map is reported as "from everywhere" instead of guessing.
+  Expect **±10–45°**, worse with echoes, and it needs 1–2 slow laps. True accuracy needs two microphones (time-difference-of-arrival),
+  which phones do not expose to a web page reliably. It says so when there is no compass sensor.
 - **🌙 Night guardian** (`js/guardian.js`): for the phone on a charger. Only night-relevant sounds count (fire/smoke alarm, siren, glass,
   scream, baby/crying, knock/door/doorbell, dog, phone, plus the user's own sounds and unusual loud sounds), sensitivity ×1.3, and a
   strong buzz + flash repeats every 4 s (up to ~2 min) until **Got it**. The screen is a dim clock; leaving shows a morning summary of what
@@ -152,9 +157,9 @@ Not built from the plan: a second pretrained ensemble model (needs a model downl
 
 ### Glass look
 
-`styles.css` ends with a liquid-glass layer, applied selectively: glass on the top bar, tab bar, live alert, full-screen alerts/modes and
+`styles.css` ends with a liquid-glass layer over a four-light gradient mesh (coral, violet, mint, blue), applied selectively: glass on the top bar, tab bar, live alert, full-screen alerts/modes and
 the mode tiles, with luminous gradient edges over a three-light gradient mesh. Dense content (lists, settings, forms) sits on calmer,
-mostly opaque panels so text keeps contrast. Primary is #1856FF; Plus Jakarta Sans (self-hosted in `fonts/`, Latin only) leads the font
+mostly opaque panels so text keeps contrast. Blue #1856FF is the interactive accent; Start is green, Stop red, and each mode tile has its own tint (green / orange / violet). Plus Jakarta Sans (self-hosted in `fonts/`, Latin only) leads the font
 stack and Lao falls through to the Noto Sans Lao stack. Hover only applies on pointer devices; focus-visible, active and disabled states
 are explicit. It falls back to solid surfaces without `backdrop-filter`, and under `prefers-contrast: more` or
 `prefers-reduced-transparency`. Alert tiers keep their AA text colours (≥ 5.2:1).

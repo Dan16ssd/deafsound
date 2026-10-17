@@ -17,7 +17,7 @@ import { toRecord, addRecord, summarize, TIMELINE_MAX } from '../js/timeline.js'
 import { bandLevels, BAND_COUNT } from '../js/viz.js';
 import { demoScenario, DEMO_SECONDS } from '../js/demo.js';
 import { proximity, heartbeatPlan, CrossingController } from '../js/crossing.js';
-import { HeadingMap, levelOf, turn, closeness, hotCold } from '../js/finder.js';
+import { HeadingMap, compassHeading, levelOf, turn, closeness, hotCold } from '../js/finder.js';
 import { guardianFilter, NightSession, GUARDIAN_GROUPS } from '../js/guardian.js';
 import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
@@ -537,7 +537,7 @@ test('crossing: controller beats on schedule, releases slowly, and goes quiet wh
 test('finder: locates the loudest heading around the circle, including across 0°', () => {
   const sweep = (target) => {
     const m = new HeadingMap();
-    for (let lap = 0; lap < 2; lap++) for (let h = 0; h < 360; h += 5) m.add(h, 0.15 + 0.8 * Math.max(0, Math.cos(((h - target) * Math.PI) / 180)) ** 2);
+    for (let lap = 0; lap < 3; lap++) for (let h = 0; h < 360; h += 5) m.add(h, 0.15 + 0.8 * Math.max(0, Math.cos(((h - target) * Math.PI) / 180)) ** 2);
     return m.best();
   };
   for (const target of [90, 200, 355, 10]) {
@@ -546,10 +546,10 @@ test('finder: locates the loudest heading around the circle, including across 0�
     assert.ok(b.confidence > 0.3);
   }
   const partial = new HeadingMap();
-  for (let h = 0; h < 60; h += 5) partial.add(h, 0.5);
+  for (let lap = 0; lap < 3; lap++) for (let h = 0; h < 60; h += 5) partial.add(h, 0.5);
   assert.equal(partial.best(), null, 'needs more turning');
   const flat = new HeadingMap();
-  for (let h = 0; h < 360; h += 5) flat.add(h, 0.5);
+  for (let lap = 0; lap < 3; lap++) for (let h = 0; h < 360; h += 5) flat.add(h, 0.5);
   assert.equal(flat.best().heading, null, 'uniform → no direction');
   assert.equal(turn(350, 10), 20); assert.equal(turn(10, 350), -20); assert.equal(hotCold(closeness(0, 5)), 'hot'); assert.equal(hotCold(closeness(0, 170)), 'cold');
   assert.ok(levelOf(0.3) > levelOf(0.01));
@@ -583,4 +583,37 @@ test('persistence: one-frame caution/info blips are dropped; danger and personal
   assert.deepEqual(p.filter([dog], 200), [], 'blip again: still only one hit');
   assert.deepEqual(p.filter([dog], 300).map((c) => c.key), ['yamnet:dog'], 'second hit within the window');
   assert.deepEqual(p.filter([dog], 5000), [], 'old hits expire');
+});
+
+test('finder: tilt-safe heading, fast turns skipped, noisy/broad signals rejected, realistic mic recovers direction', () => {
+  // flat phone: heading = 360 − alpha; upright phone facing the same way gives the same heading
+  assert.ok(Math.abs(turn(compassHeading(90, 0, 0), 270)) < 1, `flat ${compassHeading(90, 0, 0)}`);
+  assert.ok(Math.abs(turn(compassHeading(0, 90, 0), 0)) < 1, `upright ${compassHeading(0, 90, 0)}`);
+  assert.ok(Math.abs(turn(compassHeading(0, 0, 0), 0)) < 1);
+
+  // samples taken while spinning fast are discarded
+  const fast = new HeadingMap();
+  assert.equal(fast.add(0, 1, 0), true);
+  assert.equal(fast.add(60, 1, 100), false, '600°/s is a blur');
+  assert.equal(fast.add(63, 1, 300), true, '≈ 15°/s is fine');
+
+  // 2 slow laps, a ~14 dB front/back phone mic, room noise and a weak wall echo → within ~45°
+  let seed = 5; const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const trial = (target) => {
+    const m = new HeadingMap();
+    let t = 0;
+    for (let lap = 0; lap < 2; lap++) for (let h = 0; h < 360; h += 2) {
+      t += 140; // ≈ 14°/s
+      const pattern = 0.6 + 0.4 * Math.cos(((h - target) * Math.PI) / 180);           // mic directivity
+      const reflection = 0.06 * Math.cos(((h - (target + 150)) * Math.PI) / 180);       // a wall echo
+      for (let k = 0; k < 6; k++) m.add(h, Math.max(0, 0.15 + 0.42 * (pattern + reflection) * (0.85 + 0.3 * r()) + 0.05 * r()), t + k * 20);
+    }
+    return m.best();
+  };
+  let worst = 0;
+  for (const target of [20, 100, 185, 260, 340]) {
+    const b = trial(target);
+    worst = Math.max(worst, b.heading === null ? 360 : Math.abs(turn(b.heading, target)));
+  }
+  assert.ok(worst <= 45, `worst error ${worst}°`);   // honest bound: a loudness compass is ±10–45°, not precise
 });

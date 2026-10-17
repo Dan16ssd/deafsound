@@ -11,7 +11,7 @@ import { loadTimeline, saveTimeline, addRecord, summarize } from './timeline.js'
 import { Spectrogram, bandLevels, cellColor } from './viz.js';
 import { demoScenario, DEMO_SECONDS } from './demo.js';
 import { CrossingController } from './crossing.js';
-import { HeadingMap, levelOf, turn, closeness, hotCold, norm360 } from './finder.js';
+import { HeadingMap, compassHeading, levelOf, turn, closeness, hotCold, norm360 } from './finder.js';
 import { GUARDIAN, guardianFilter, NightSession } from './guardian.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { Persistence, yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
@@ -1060,7 +1060,19 @@ let crossState = 'clear';
 const sensitivity = () => settings.sensitivity * (mode === 'guardian' ? GUARDIAN.sensitivity : 1);
 
 // Called on every analysis.
+let finderTarget = null;   // the group being searched for, or null = any sound
+let finderGate = 1;
+
 function onAnalysis(scores, liveRms) {
+  if (mode === 'finder') {
+    // Aim at the sound that last alerted (within a minute); only its loudness counts.
+    const recent = [...log].reverse().find((e) => e.t > Date.now() - 60000 && e.tier !== 'info' && GROUP_BY_ID.get(e.group));
+    finderTarget = recent ? GROUP_BY_ID.get(recent.group) : null;
+    let conf = 0;
+    if (finderTarget) for (const c of finderTarget.classes) if (scores[c] > conf) conf = scores[c];
+    finderGate = finderTarget ? Math.min(1, conf / 0.3) : 1;
+    return;
+  }
   if (mode !== 'crossing') return;
   let movingConf = 0;
   for (const c of MOVING_CLASSES) if (scores[c] > movingConf) movingConf = scores[c];
@@ -1202,8 +1214,14 @@ function crossingTick() {
 
 // ── find the sound ──────────────────────────────────────────────────────────
 
+// Both orientation events can fire. The relative one has an arbitrary zero, so once the
+// absolute (compass) one is seen it wins and the relative one is ignored; mixing them makes
+// the heading jump.
+let absoluteSeen = false;
 function onOrientation(e) {
-  const h = e.webkitCompassHeading ?? (e.alpha == null ? null : 360 - e.alpha);
+  if (e.type === 'deviceorientationabsolute') absoluteSeen = true;
+  else if (absoluteSeen) return;
+  const h = e.webkitCompassHeading ?? (e.alpha == null ? null : compassHeading(e.alpha, e.beta ?? 0, e.gamma ?? 0));
   if (h == null || Number.isNaN(h)) return;
   heading = norm360(h);
   lastHeadingAt = performance.now();
@@ -1225,7 +1243,11 @@ function stopCompass() {
 }
 
 function finderSample(level) {
-  if (heading !== null && performance.now() - lastHeadingAt < 1000) finder.add(heading, levelOf(level));
+  if (heading === null || performance.now() - lastHeadingAt > 1000) return;
+  // Target known: its loudness weighted by how sure the classifier is it is playing now.
+  // Unknown: loudness above the room's noise floor, so steady noise cancels out.
+  const lvl = finderTarget ? levelOf(level) * finderGate : Math.max(0, levelOf(level) - levelOf(noiseFloor * 1.2));
+  finder.add(heading, lvl, performance.now());
 }
 
 let nextTick = 0;
@@ -1250,7 +1272,7 @@ function finderTick() {
   const c = closeness(heading, best.heading);
   const hc = hotCold(c);
   status.textContent = { hot: '🔥 ທາງນີ້!', warm: '♨️ ໃກ້ແລ້ວ', cool: '🌤️ ຫັນໄປອີກ', cold: '❄️ ຜິດທາງ' }[hc];
-  sub.textContent = `${{ hot: 'Straight ahead', warm: 'Getting warmer', cool: 'Keep turning', cold: 'Wrong way' }[hc]} · ${Math.round(best.confidence * 100)}%`;
+  sub.textContent = `${{ hot: 'Straight ahead', warm: 'Getting warmer', cool: 'Keep turning', cold: 'Wrong way' }[hc]} · ±${Math.round(best.width / 2)}° · ${finderTarget ? finderTarget.en : 'any sound'}`;
   const now = performance.now();
   if (c > 0.6 && now >= nextTick) {
     navigator.vibrate?.([c > 0.85 ? 90 : 30]);
@@ -1278,6 +1300,13 @@ function drawCompass() {
   const best = finder.best();
   if (best?.heading != null) {
     const rel = (turn(h, best.heading) * Math.PI) / 180;
+    const half = ((best.width / 2) * Math.PI) / 180;
+    g.beginPath();                                   // the zone the sound probably comes from
+    g.moveTo(cx, cy);
+    g.arc(cx, cy, W * 0.46, rel - Math.PI / 2 - half, rel - Math.PI / 2 + half);
+    g.closePath();
+    g.fillStyle = 'rgba(255, 196, 77, 0.35)';
+    g.fill();
     g.save();
     g.translate(cx, cy);
     g.rotate(rel);

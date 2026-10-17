@@ -308,10 +308,15 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
   --text: #141414;
   --muted: #4a5060;
 
-  --g-base: linear-gradient(160deg, #f5f7ff 0%, #e9eefc 55%, #efe9fb 100%);
-  --g-glow-1: rgba(24, 86, 255, 0.32);
-  --g-glow-2: rgba(122, 92, 255, 0.26);
-  --g-glow-3: rgba(43, 212, 255, 0.28);
+  --g-base: linear-gradient(165deg, #fff4ec 0%, #f6efff 48%, #e8f8f1 100%);
+  --g-glow-1: rgba(255, 138, 76, 0.34);     /* coral / amber */
+  --g-glow-2: rgba(168, 85, 247, 0.26);     /* violet */
+  --g-glow-3: rgba(7, 202, 107, 0.26);      /* mint */
+  --g-glow-4: rgba(24, 86, 255, 0.2);       /* blue, one light of four */
+  --g-fallback: #f6efff;
+  --go: #07ca6b;                            /* "start / safe" */
+  --go-text: #04210f;
+  --stop-text: #ffffff;
 
   --g-glass: rgba(255, 255, 255, 0.56);     /* hero / chrome */
   --g-panel: rgba(255, 255, 255, 0.82);     /* content */
@@ -340,14 +345,17 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
     --text: #f1f4ff;
     --muted: #bcc4d9;
 
-    --g-base: linear-gradient(160deg, #060a17 0%, #0a1030 60%, #120a2a 100%);
-    --g-glow-1: rgba(24, 86, 255, 0.5);
-    --g-glow-2: rgba(106, 61, 240, 0.4);
-    --g-glow-3: rgba(10, 165, 201, 0.32);
+    --g-base: linear-gradient(165deg, #140c1e 0%, #1a1030 50%, #0c1a1a 100%);
+    --g-glow-1: rgba(255, 120, 60, 0.3);
+    --g-glow-2: rgba(214, 48, 127, 0.36);
+    --g-glow-3: rgba(7, 202, 107, 0.24);
+    --g-glow-4: rgba(24, 86, 255, 0.38);
+    --stop-text: #2a0705;
+    --g-fallback: #1a1030;
 
-    --g-glass: rgba(18, 24, 50, 0.52);
-    --g-panel: rgba(18, 24, 50, 0.8);
-    --g-field: rgba(8, 12, 30, 0.7);
+    --g-glass: rgba(34, 26, 54, 0.66);
+    --g-panel: rgba(30, 23, 46, 0.82);
+    --g-field: rgba(12, 8, 22, 0.7);
     --g-hi: rgba(255, 255, 255, 0.28);
     --g-lo: rgba(134, 168, 255, 0.2);
     --g-line: rgba(255, 255, 255, 0.12);
@@ -366,23 +374,29 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
   }
 }
 
-html { background: #0a1030; }
+html {
+  background-color: var(--g-fallback);
+  background-image: var(--g-base);
+  background-attachment: fixed; background-repeat: no-repeat; background-size: cover;
+}
 body {
-  background: var(--g-base) fixed;
+  background: none;
   color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
 body::before {          /* gradient mesh: three soft light sources, no filter cost */
   content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(60vmax 60vmax at 8% 4%, var(--g-glow-1), transparent 62%),
-    radial-gradient(55vmax 55vmax at 100% 30%, var(--g-glow-2), transparent 62%),
-    radial-gradient(60vmax 60vmax at 40% 105%, var(--g-glow-3), transparent 62%);
+    radial-gradient(55vmax 55vmax at 4% 2%, var(--g-glow-1), transparent 62%),
+    radial-gradient(50vmax 50vmax at 100% 22%, var(--g-glow-2), transparent 62%),
+    radial-gradient(55vmax 55vmax at 0% 78%, var(--g-glow-3), transparent 62%),
+    radial-gradient(50vmax 50vmax at 96% 100%, var(--g-glow-4), transparent 62%);
 }
 
 small, .muted { color: var(--muted); }
 h2 { font-size: 0.9rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 26px 2px 10px; }
 h2 small { text-transform: none; letter-spacing: 0; }
+h2::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 1px; background: linear-gradient(135deg, #ff8a4c, #d6307f); }
 
 /* ── chrome: top bar + tab bar (glass) ────────────────────────────────── */
 
@@ -401,7 +415,7 @@ h2 small { text-transform: none; letter-spacing: 0; }
 @media (hover: hover) { .tabs button:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); } }
 
 .pill { background: var(--g-panel); border: 1px solid var(--g-line); color: var(--muted); font-weight: 600; }
-.pill.on { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--g-panel)); }
+.pill.on { color: var(--text-ok); border-color: var(--text-ok); background: color-mix(in srgb, var(--go) 16%, var(--g-panel)); }
 
 /* ── the live alert (hero glass) ──────────────────────────────────────── */
 
@@ -424,7 +438,7 @@ h2 small { text-transform: none; letter-spacing: 0; }
 .alert.tier-danger::before, .alert.tier-caution::before { display: none; }
 
 .meter { background: var(--g-panel); border: 1px solid var(--g-line); height: 8px; border-radius: 999px; box-shadow: var(--g-inset); }
-#meter-bar { background: linear-gradient(90deg, #2bd4ff, var(--accent)); border-radius: 999px; }
+#meter-bar { background: linear-gradient(90deg, var(--go), #f5c518 60%, #ff5a4f); border-radius: 999px; }
 .viz { border: 1px solid var(--g-line); border-radius: 22px; box-shadow: var(--g-shadow); }
 
 /* ── bento tiles: demo + modes (glass, the one place it repeats) ─────── */
@@ -443,10 +457,16 @@ h2 small { text-transform: none; letter-spacing: 0; }
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
+/* each tile carries its own colour; --tint is an r,g,b triple */
+.mode-btn[data-mode="crossing"] { --tint: 7, 202, 107; }
+.mode-btn[data-mode="finder"] { --tint: 255, 150, 60; }
+.mode-btn[data-mode="guardian"] { --tint: 138, 92, 246; }
+#btn-demo { --tint: 255, 90, 110; }
+.mode-btn, #btn-demo { background: linear-gradient(160deg, rgba(var(--tint), 0.26), rgba(var(--tint), 0.07)), var(--g-glass); }
 .mode-btn { min-height: 108px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-.mode-btn span { font-size: 2rem; line-height: 1.1; }
+.mode-btn span { font-size: 1.8rem; line-height: 1; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 18px; background: rgba(var(--tint), 0.3); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
 .mode-btn b { font-size: 1rem; }
-#btn-demo { width: 100%; min-height: 64px; margin-top: 12px; padding: 12px 18px; font-weight: 700; font-size: 1.05rem; text-align: left; background: color-mix(in srgb, var(--accent) 16%, var(--g-glass)); }
+#btn-demo { width: 100%; min-height: 64px; margin-top: 12px; padding: 12px 18px; font-weight: 700; font-size: 1.05rem; text-align: left; }
 .mode-btn:active, #btn-demo:active { transform: scale(0.985); }
 .mode-btn:focus-visible, #btn-demo:focus-visible { outline: none; box-shadow: var(--g-shadow), var(--g-ring); }
 #btn-demo:disabled { opacity: 0.6; cursor: progress; }
@@ -479,11 +499,11 @@ h2 small { text-transform: none; letter-spacing: 0; }
 .btn:disabled { opacity: 0.5; box-shadow: none; cursor: not-allowed; }
 @media (hover: hover) { .btn:not(:disabled):hover { box-shadow: 0 6px 18px -4px rgba(24, 86, 255, 0.35), var(--g-inset); } }
 .btn-primary {
-  color: var(--accent-text); border-color: rgba(255, 255, 255, 0.4);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #fff), var(--accent));
-  box-shadow: 0 8px 22px -6px color-mix(in srgb, var(--accent) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  color: var(--go-text); border-color: rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, #3ee08f, var(--go));
+  box-shadow: 0 8px 22px -6px rgba(7, 202, 107, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
-.btn-primary.stop { background: linear-gradient(180deg, color-mix(in srgb, var(--text-danger) 88%, #fff), var(--text-danger)); color: #fff; box-shadow: 0 8px 22px -6px var(--glow-danger), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.btn-primary.stop { background: linear-gradient(180deg, color-mix(in srgb, var(--text-danger) 88%, #fff), var(--text-danger)); color: var(--stop-text); box-shadow: 0 8px 22px -6px var(--glow-danger), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
 .btn-ghost { border-radius: 999px; }
 
 .field input[type=text], .field input[type=url], .field input[type=password] {
@@ -549,3 +569,7 @@ h2 small { text-transform: none; letter-spacing: 0; }
   * { --g-line: currentColor; }
 }
 @media (forced-colors: active) { .alert, .card, .mode-btn, #btn-demo, .btn { border: 1px solid CanvasText; } }
+
+@media (prefers-color-scheme: dark) {
+  .mode-btn, #btn-demo { background: linear-gradient(160deg, rgba(var(--tint), 0.2), rgba(var(--tint), 0.05)), var(--g-glass); }
+}
