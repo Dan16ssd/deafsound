@@ -127,6 +127,15 @@ It is a loudness heuristic, not distance measurement: a source that simply gets 
 Not built from the plan: a second pretrained ensemble model (needs a model download and a latency check), stereo direction
 (device-dependent) and live Lao captions (needs a team decision because audio would leave the phone).
 
+### Sound picture and demo mode
+
+- **Sound picture** (`js/viz.js`): a live scrolling spectrogram on the Listen tab (48 log-spaced bands, 100 Hz–6 kHz). Dark when quiet,
+  and it takes on the colour of the current alert tier (blue → amber → red) as sound gets louder, so a deaf user can *see* what the
+  phone hears.
+- **Demo** (`js/demo.js`, button on the Listen tab): a synthetic 9 s scene (street noise, then a horn that approaches, then passes with a
+  Doppler drop) is fed through the real pipeline with no mic or speaker. It shows detection, the "getting closer" escalation, the
+  "passed you" cue, the risk level, the spectrogram, vibration, flash and band. The mic is ignored while it runs.
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

@@ -14,6 +14,8 @@ import { NoveltyDetector, NOVELTY } from '../js/novelty.js';
 import { estimatePitch, PitchTrend } from '../js/pitch.js';
 import { flashSchedule, bandLevel } from '../js/outputs.js';
 import { toRecord, addRecord, summarize, TIMELINE_MAX } from '../js/timeline.js';
+import { bandLevels, BAND_COUNT } from '../js/viz.js';
+import { demoScenario, DEMO_SECONDS } from '../js/demo.js';
 import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
@@ -461,4 +463,38 @@ test('timeline: compact records, cap, daily summary ignores wrong alerts and oth
   assert.equal(s.byHour[12], 3);
   for (let i = 0; i < TIMELINE_MAX + 20; i++) addRecord(list, ev({}));
   assert.equal(list.length, TIMELINE_MAX);
+});
+
+// ── sound picture & demo scenario ───────────────────────────────────────────
+
+test('viz: band levels peak at the tone, and are quiet for silence', () => {
+  const lv = bandLevels(tone(1000, 512));
+  assert.equal(lv.length, BAND_COUNT);
+  const peak = lv.indexOf(Math.max(...lv));
+  const hz = 100 * (6000 / 100) ** (peak / (BAND_COUNT - 1));
+  assert.ok(Math.abs(hz - 1000) / 1000 < 0.12, `peak at ${hz} Hz`);
+  assert.ok(Math.max(...bandLevels(new Float32Array(512))) < 0.01);
+  for (const v of lv) assert.ok(v >= 0 && v <= 1);
+});
+
+test('demo scenario: getting closer, then pitch falls = passed; and the real model calls it a horn', async () => {
+  const sig = demoScenario();
+  assert.equal(sig.length, DEMO_SECONDS * SR);
+  const tr = new LevelTrend(), pt = new PitchTrend();
+  const seen = { approaching: false, passed: false, approachAfterPass: false };
+  for (let t = 0; t + 2048 <= sig.length; t += 1600) {
+    const ms = (t / SR) * 1000;
+    tr.push(ms, rms(sig.subarray(t, t + 2048)));
+    pt.push(ms, estimatePitch(sig.subarray(t, t + 2048)));
+    const approaching = tr.state() === 'approaching', falling = pt.state() === 'falling';
+    if (approaching && !falling) seen.approaching = true;
+    if (falling) seen.passed = true;
+    if (seen.passed && approaching && !falling) seen.approachAfterPass = true;
+  }
+  assert.ok(seen.approaching, 'approach detected');
+  assert.ok(seen.passed, 'pass detected');
+  const win = sig.subarray(4.5 * SR, 4.5 * SR + WINDOW);
+  const { scores } = await yam.classify(win);
+  const cands = yamnetCandidates(scores, 1, {});
+  assert.ok(cands.some((c) => c.tier === 'danger'), `danger candidates: ${cands.map((c) => c.group)}`);
 });

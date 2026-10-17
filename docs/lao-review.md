@@ -131,6 +131,7 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Settings | ກະພິບໄຟສາຍ ເມື່ອມີສຽງເຕືອນ | Flash the camera light on alerts |  |  |
 | Settings | ເຊື່ອມຕໍ່ສາຍແຮງສັ່ນ (Bluetooth) | Connect vibrating band |  |  |
 | Listen | ມື້ນີ້ / ທັງໝົດ / ມື້ນີ້ຍັງບໍ່ມີສຽງເຕືອນ | Today / Total / No alerts yet today |  |  |
+| Listen | ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ / ກຳລັງສາທິດ… | Demo: a horn approaches, then passes / Demo running |  |  |
 
 ## 3. Questions for reviewers
 

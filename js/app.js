@@ -8,6 +8,8 @@ import { NoveltyDetector, NOVEL_ALERT } from './novelty.js';
 import { estimatePitch, PitchTrend } from './pitch.js';
 import { Flash, Band, bandLevel } from './outputs.js';
 import { loadTimeline, saveTimeline, addRecord, summarize } from './timeline.js';
+import { Spectrogram, bandLevels } from './viz.js';
+import { demoScenario, DEMO_SECONDS } from './demo.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
@@ -119,7 +121,7 @@ async function start() {
   showIdle('ກຳລັງໂຫຼດໂມເດວ…', 'Loading on-device model');
   try {
     await getYamnet();
-    mic = new MicStream(onChunk);
+    mic = new MicStream((chunk, t) => { if (!demoActive) onChunk(chunk, t); });
     const { contextRate } = await mic.start();
     console.log(`[DeafSound] mic running, context ${contextRate} Hz`);
     await acquireWakeLock();
@@ -986,3 +988,47 @@ function renderToday() {
   body.style.whiteSpace = 'pre-line';
 }
 renderToday();
+
+
+// ── sound picture + demo ────────────────────────────────────────────────────
+
+let demoActive = false;
+const spec = new Spectrogram($('viz'));
+let lastViz = 0;
+
+function drawViz(now) {
+  requestAnimationFrame(drawViz);
+  if (now - lastViz < 50 || ring.total < 512 || document.hidden) return; // ~20 columns/s
+  lastViz = now;
+  spec.setTier(shown?.tier);
+  spec.push(bandLevels(ring.latest(512)));
+}
+requestAnimationFrame(drawViz);
+
+async function runDemo() {
+  if (demoActive) return;
+  const btn = $('btn-demo');
+  btn.disabled = true;
+  try { await getYamnet(); } catch { btn.disabled = false; showIdle('ໂຫຼດໂມເດວບໍ່ໄດ້', 'Could not load the model'); return; }
+  demoActive = true;
+  trend.reset(); pitchTrend.reset();
+  noiseFloor = 0;
+  const sig = demoScenario();
+  const CH = 320;
+  const t0 = performance.now();
+  let fed = 0;
+  btn.textContent = '⏺ ກຳລັງສາທິດ… Demo running';
+  await new Promise((resolve) => {
+    const timer = setInterval(() => {
+      const due = Math.min(sig.length, Math.floor(((performance.now() - t0) / 1000) * SAMPLE_RATE / CH) * CH);
+      while (fed < due) { onChunk(sig.subarray(fed, fed + CH), performance.now()); fed += CH; }
+      if (fed >= sig.length) { clearInterval(timer); resolve(); }
+    }, 20);
+  });
+  demoActive = false;
+  trend.reset(); pitchTrend.reset();
+  noiseFloor = 0;
+  btn.disabled = false;
+  btn.innerHTML = '▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small>';
+}
+$('btn-demo').addEventListener('click', runDemo);
