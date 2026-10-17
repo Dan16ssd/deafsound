@@ -140,6 +140,9 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Guardian | ເຝົ້າກາງຄືນ / ກຳລັງເຝົ້າ / ຄືນນີ້ງຽບສະຫງົບ / ມີ N ການແຈ້ງເຕືອນ | Night guardian / Guarding / A quiet night / N alerts |  |  |
 | Guardian | ເສຍບສາຍສາກ ແລະ ວາງໂທລະສັບໄວ້ໃກ້ໆ. ຕ້ອງເປີດໜ້າຈໍຄ້າງໄວ້. | Plug in the charger and keep the phone close. The screen must stay on. |  |  |
 | Guardian | ຊມ / ນທ | h / min |  |  |
+| Settings | ການສະແດງຜົນ / ຮູບແບບໜ້າຈໍ / ອັດຕະໂນມັດ / ຄອນທຣາສສູງ / ແກ້ວ / ກຳລັງໃຊ້ | Display / Screen style / Auto / High contrast / Glass / Using |  |  |
+| Listen | ເພີ່ມເຕີມ | More |  |  |
+| Finder | ສະແກນໃໝ່ / ຊ້າລົງ / ບໍ່ໄດ້ຍິນສຽງ / ສຽງຢູ່ທາງນີ້ / ຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ | Scan again / Slower / No sound heard / The sound is this way / Turn slowly all the way round |  |  |
 
 ## 3. Questions for reviewers
 

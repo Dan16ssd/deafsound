@@ -573,3 +573,86 @@ h2::before { content: ""; display: inline-block; width: 8px; height: 8px; border
 @media (prefers-color-scheme: dark) {
   .mode-btn, #btn-demo { background: linear-gradient(160deg, rgba(var(--tint), 0.2), rgba(var(--tint), 0.05)), var(--g-glass); }
 }
+
+/* ── primary action always in reach ───────────────────────────────────── */
+
+.actions-bar {
+  position: sticky; z-index: 6; margin: 12px -4px 8px; padding: 8px 4px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+}
+.actions-bar .btn { min-height: 64px; font-size: 1.2rem; }
+.actions-bar #btn-start { flex: 2 1 160px; }
+.actions-bar #btn-narrate { flex: 1 1 110px; }
+.more > summary { cursor: pointer; font-weight: 700; padding: 6px 2px; }
+.more .viz { margin-top: 10px; }
+
+/* ── plain high-contrast style: no blur, no gradients, solid colours, thick edges.
+      Chosen automatically on slower phones; best in bright sun. ──────────── */
+
+html[data-contrast="high"] {
+  --g-fallback: #ffffff; --g-base: none;
+  --text: #000000; --muted: #1f1f1f;
+  --g-glass: #ffffff; --g-panel: #ffffff; --g-field: #ffffff;
+  --g-line: #000000; --g-hi: #000000; --g-lo: #000000;
+  --g-shadow: none; --g-inset: none; --g-ring: 0 0 0 3px #fff, 0 0 0 6px #000;
+  --accent: #0036c7; --accent-text: #ffffff;
+  --text-danger: #7a0000; --text-warning: #5a3500; --text-ok: #064d22;
+  --g-danger: #ffe1de; --g-warning: #ffe9b0; --g-info: #eaf0fa; --g-ok: #d4f5e0;
+  --glow-danger: transparent; --glow-warning: transparent; --glow-ok: transparent;
+  --go: #06722f; --go-text: #ffffff; --stop-text: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-contrast="high"] {
+    --g-fallback: #000000;
+    --text: #ffffff; --muted: #e6e6e6;
+    --g-glass: #000000; --g-panel: #000000; --g-field: #000000;
+    --g-line: #ffffff; --g-hi: #ffffff; --g-lo: #ffffff;
+    --g-ring: 0 0 0 3px #000, 0 0 0 6px #fff;
+    --accent: #9db8ff; --accent-text: #000000;
+    --text-danger: #ffb4ae; --text-warning: #ffd470; --text-ok: #8ff0b5;
+    --g-danger: #2a0000; --g-warning: #2a1d00; --g-info: #0c0c0c; --g-ok: #00200d;
+    --go: #3ddc84; --go-text: #000000; --stop-text: #000000;
+  }
+}
+html[data-contrast="high"], html[data-contrast="high"] body { background: var(--g-fallback); }
+html[data-contrast="high"] body::before { display: none; }
+html[data-contrast="high"] *, html[data-contrast="high"] *::before {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+html[data-contrast="high"] .top, html[data-contrast="high"] .tabs { background: var(--g-panel); border-color: var(--g-line); box-shadow: none; }
+html[data-contrast="high"] .top { border-bottom: 2px solid var(--g-line); }
+html[data-contrast="high"] .tabs { border-top: 2px solid var(--g-line); }
+html[data-contrast="high"] .tabs button.active { background: var(--accent); color: var(--accent-text); box-shadow: none; }
+html[data-contrast="high"] .alert,
+html[data-contrast="high"] .card, html[data-contrast="high"] .narration, html[data-contrast="high"] .events li,
+html[data-contrast="high"] .sounds li, html[data-contrast="high"] .thresholds, html[data-contrast="high"] .debug[open],
+html[data-contrast="high"] .mode-btn, html[data-contrast="high"] #btn-demo, html[data-contrast="high"] .viz {
+  background: var(--g-panel); border: 2px solid var(--g-line); box-shadow: none;
+}
+html[data-contrast="high"] .alert::before, html[data-contrast="high"] .mode-btn::before, html[data-contrast="high"] #btn-demo::before { display: none; }
+html[data-contrast="high"] .alert.tier-idle { background: var(--g-panel); }
+html[data-contrast="high"] .alert.tier-info { background: var(--g-info); }
+html[data-contrast="high"] .alert.tier-danger { background: var(--g-danger); border: 6px solid var(--text-danger); box-shadow: none; }
+html[data-contrast="high"] .alert.tier-caution { background: var(--g-warning); border: 6px solid var(--text-warning); box-shadow: none; }
+html[data-contrast="high"] .mode-btn span { background: transparent; box-shadow: none; }
+html[data-contrast="high"] .btn { background: var(--g-panel); color: var(--text); border: 2px solid var(--g-line); box-shadow: none; }
+html[data-contrast="high"] .btn-primary { background: var(--go); color: var(--go-text); border: 3px solid var(--g-line); box-shadow: none; }
+html[data-contrast="high"] .btn-primary.stop { background: var(--text-danger); color: var(--stop-text); }
+html[data-contrast="high"] .btn:focus-visible, html[data-contrast="high"] .tabs button:focus-visible { outline: none; box-shadow: var(--g-ring); }
+html[data-contrast="high"] .field input[type=text], html[data-contrast="high"] .field input[type=url], html[data-contrast="high"] .field input[type=password] { border: 2px solid var(--g-line); box-shadow: none; }
+html[data-contrast="high"] .seg span { background: var(--g-panel); border: 2px solid var(--g-line); }
+html[data-contrast="high"] .seg input:checked + span { background: var(--accent); color: var(--accent-text); box-shadow: none; }
+html[data-contrast="high"] .seg input:checked + span small { color: inherit; }
+html[data-contrast="high"] .pill, html[data-contrast="high"] .pill.on { background: var(--g-panel); border: 2px solid var(--g-line); color: var(--text); }
+html[data-contrast="high"] .meter { background: var(--g-panel); border: 2px solid var(--g-line); }
+html[data-contrast="high"] .overlay, html[data-contrast="high"] .guide, html[data-contrast="high"] .mode { background: var(--g-panel); }
+html[data-contrast="high"] .overlay.tier-danger { background: var(--g-danger); box-shadow: inset 0 0 0 14px var(--text-danger); }
+html[data-contrast="high"] .overlay.tier-caution { background: var(--g-warning); box-shadow: inset 0 0 0 14px var(--text-warning); }
+html[data-contrast="high"] .overlay.tier-info { background: var(--g-info); }
+html[data-contrast="high"] .ov-btn { background: var(--g-panel); border: 3px solid var(--g-line); color: var(--text); }
+html[data-contrast="high"] .mode-crossing[data-state="clear"] { background: var(--g-ok); box-shadow: none; }
+html[data-contrast="high"] .mode-crossing[data-state="near"] { background: var(--g-warning); }
+html[data-contrast="high"] .mode-crossing[data-state="close"] { background: var(--g-warning); box-shadow: inset 0 0 0 14px var(--text-warning); }
+html[data-contrast="high"] .mode-crossing[data-state="back"] { background: var(--g-danger); box-shadow: inset 0 0 0 16px var(--text-danger); }
+html[data-contrast="high"] .actions-bar { background: var(--g-panel); border-top: 2px solid var(--g-line); border-bottom: 2px solid var(--g-line); margin-left: -16px; margin-right: -16px; padding: 8px 16px; }
+html[data-contrast="high"] small { color: inherit; opacity: 1; }

@@ -47,6 +47,7 @@ const DEFAULT_SETTINGS = {
   vibrateInfo: false,
   notify: false,
   flash: false,
+  contrast: 'auto',   // 'auto' | 'high' | 'glass'
   guideSeen: false,
   thresholds: {},   // field-tuned overrides: { [groupId]: threshold }
   narration: { enabled: false, endpoint: 'https://api.anthropic.com/v1/messages', apiKey: '', model: 'claude-opus-5' },
@@ -1006,7 +1007,7 @@ let lastViz = 0;
 
 function drawViz(now) {
   requestAnimationFrame(drawViz);
-  if (now - lastViz < 50 || ring.total < 512 || document.hidden) return; // ~20 columns/s
+  if (now - lastViz < 50 || ring.total < 512 || document.hidden || !$('more').open) return; // ~20 columns/s
   lastViz = now;
   spec.setTier(shown?.tier);
   spec.push(bandLevels(ring.latest(512)));
@@ -1380,3 +1381,29 @@ $('ov-close').addEventListener('click', () => { guardianEv = null; flash.cancel(
 document.querySelectorAll('.mode-btn').forEach((b) => b.addEventListener('click', () => enterMode(b.dataset.mode)));
 $('mode-exit').addEventListener('click', exitMode);
 $('mode-rescan').addEventListener('click', finderReset);
+
+
+// ── display: high contrast / glass ──────────────────────────────────────────
+
+// Auto picks the plain high-contrast style on slower phones (blur is expensive) and when the
+// system asks for more contrast or less transparency. Glass can always be chosen by hand.
+function wantsHighContrast() {
+  if (settings.contrast === 'high') return true;
+  if (settings.contrast === 'glass') return false;
+  const slow = (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+  const asked = matchMedia('(prefers-contrast: more)').matches || matchMedia('(prefers-reduced-transparency: reduce)').matches;
+  return !!(slow || asked);
+}
+
+function applyContrast() {
+  const high = wantsHighContrast();
+  document.documentElement.dataset.contrast = high ? 'high' : 'glass';
+  const el = $('contrast-now');
+  if (el) el.textContent = high ? 'ກຳລັງໃຊ້: ຄອນທຣາສສູງ · Using: high contrast' : 'ກຳລັງໃຊ້: ແກ້ວ · Using: glass';
+}
+
+document.querySelectorAll('#set-contrast input').forEach((r) => {
+  r.checked = r.value === settings.contrast;
+  r.addEventListener('change', () => { settings.contrast = r.value; saveSettings(); applyContrast(); });
+});
+applyContrast();

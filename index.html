@@ -30,25 +30,13 @@
         <button id="btn-snooze" class="btn-ghost" hidden>ປິດສຽງນີ້ 10 ນາທີ</button>
       </div>
 
-      <canvas id="viz" class="viz" width="360" height="120" aria-label="Live sound picture (spectrogram)" role="img"></canvas>
-      <button id="btn-demo" class="btn btn-wide">▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small></button>
-
-      <h2>ໂໝດພິເສດ <small>Special modes</small></h2>
-      <div class="modes">
-        <button class="mode-btn" data-mode="crossing"><span aria-hidden="true">🚸</span><b>ຂ້າມຖະໜົນ</b><small>Crossing</small></button>
-        <button class="mode-btn" data-mode="finder"><span aria-hidden="true">🧭</span><b>ຫາທິດສຽງ</b><small>Find sound</small></button>
-        <button class="mode-btn" data-mode="guardian"><span aria-hidden="true">🌙</span><b>ເຝົ້າກາງຄືນ</b><small>Night guard</small></button>
-      </div>
-
-      <div id="scene" class="muted" role="status" aria-live="off"></div>
-
       <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
 
       <div id="screen-warn" class="banner" role="status" hidden>
         🔆 ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ <small id="screen-warn-detail">Keep the screen on while listening</small>
       </div>
 
-      <div class="row">
+      <div class="row actions-bar">
         <button id="btn-start" class="btn btn-primary">ເລີ່ມຟັງ</button>
         <button id="btn-narrate" class="btn">ເກີດຫຍັງຂຶ້ນ?</button>
       </div>
@@ -58,18 +46,33 @@
         <div id="narration-meta" class="muted"></div>
       </div>
 
+      <h2>ໂໝດພິເສດ <small>Special modes</small></h2>
+      <div class="modes">
+        <button class="mode-btn" data-mode="crossing"><span aria-hidden="true">🚸</span><b>ຂ້າມຖະໜົນ</b><small>Crossing</small></button>
+        <button class="mode-btn" data-mode="finder"><span aria-hidden="true">🧭</span><b>ຫາທິດສຽງ</b><small>Find sound</small></button>
+        <button class="mode-btn" data-mode="guardian"><span aria-hidden="true">🌙</span><b>ເຝົ້າກາງຄືນ</b><small>Night guard</small></button>
+      </div>
+
+      <button id="btn-demo" class="btn btn-wide">▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small></button>
+
       <h2>ສຽງທີ່ຜ່ານມາ <small>Recent</small></h2>
       <ol id="events" class="events"></ol>
 
-      <details id="today" class="debug">
-        <summary>ມື້ນີ້ <small>Today · summary</small></summary>
-        <div id="today-body" class="muted"></div>
-      </details>
+      <details id="more" class="debug more">
+        <summary>ເພີ່ມເຕີມ <small>More: sound picture, today, debug</small></summary>
+        <canvas id="viz" class="viz" width="360" height="120" aria-label="Live sound picture (spectrogram)" role="img"></canvas>
+        <div id="scene" class="muted" role="status" aria-live="off"></div>
 
-      <details id="debug" class="debug">
-        <summary>Debug · YAMNet</summary>
-        <div id="debug-stats" class="mono"></div>
-        <ol id="debug-top" class="mono"></ol>
+        <details id="today" class="debug">
+          <summary>ມື້ນີ້ <small>Today · summary</small></summary>
+          <div id="today-body" class="muted"></div>
+        </details>
+
+        <details id="debug" class="debug">
+          <summary>Debug · YAMNet</summary>
+          <div id="debug-stats" class="mono"></div>
+          <ol id="debug-top" class="mono"></ol>
+        </details>
       </details>
     </section>
 
@@ -110,6 +113,17 @@
 
     <!-- ───────────── Settings ───────────── -->
     <section id="view-settings" class="view" hidden>
+      <h2>ການສະແດງຜົນ <small>Display</small></h2>
+      <div class="card">
+        <fieldset class="seg" id="set-contrast">
+          <legend>ຮູບແບບໜ້າຈໍ <small>Screen style</small></legend>
+          <label><input type="radio" name="contrast" value="auto"><span>ອັດຕະໂນມັດ<br><small>Auto</small></span></label>
+          <label><input type="radio" name="contrast" value="high"><span>ຄອນທຣາສສູງ<br><small>High contrast</small></span></label>
+          <label><input type="radio" name="contrast" value="glass"><span>ແກ້ວ<br><small>Glass</small></span></label>
+        </fieldset>
+        <div id="contrast-now" class="muted"></div>
+      </div>
+
       <h2>ການແຈ້ງເຕືອນ <small>Alerts</small></h2>
       <div class="card">
         <label class="field">

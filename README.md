@@ -164,6 +164,14 @@ stack and Lao falls through to the Noto Sans Lao stack. Hover only applies on po
 are explicit. It falls back to solid surfaces without `backdrop-filter`, and under `prefers-contrast: more` or
 `prefers-reduced-transparency`. Alert tiers keep their AA text colours (≥ 5.2:1).
 
+### Start button and high-contrast style
+
+- **Start is always in reach:** the Start / "What happened?" row is pinned above the tab bar on the Listen tab. The spectrogram, scene chip,
+  today summary and debug now live in a collapsed **More** section (the spectrogram only draws while it is open).
+- **High-contrast style** (Settings → Display: Auto / High contrast / Glass): plain solid colours, pure black or white text, thick
+  2–6 px borders, no blur or gradients. **Auto** picks it on slower phones (≤ 4 CPU cores or ≤ 2 GB RAM) and when the system asks for more
+  contrast or less transparency; Glass can always be chosen by hand. Text/background pairs are ≥ 6:1 (alert tiers 8.6–11.7:1).
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the
