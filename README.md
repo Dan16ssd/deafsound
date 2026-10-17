@@ -136,6 +136,27 @@ Not built from the plan: a second pretrained ensemble model (needs a model downl
   Doppler drop) is fed through the real pipeline with no mic or speaker. It shows detection, the "getting closer" escalation, the
   "passed you" cue, the risk level, the spectrogram, vibration, flash and band. The mic is ignored while it runs.
 
+### Special modes (Listen tab)
+
+- **🚸 Crossing** (`js/crossing.js`): a haptic heartbeat for crossing a street. A vehicle-class confidence, loudness and the
+  "getting closer" / Doppler cues combine into a proximity value; the phone beats slowly when a vehicle is first heard and faster and
+  stronger as it nears, then gives a long "step back" pattern and a red screen. Green means *no vehicle sound heard*, **not** safe:
+  the screen says to look both ways. Vehicle alerts are handled by this mode while it is on.
+- **🧭 Find the sound** (`js/finder.js`): a hot/cold compass. A phone mic can't tell direction, so the user turns slowly while the app
+  records loudness per compass heading (10° bins, older readings fade); an arrow points to the loudest heading and the phone ticks faster
+  when it faces it. It uses the device orientation sensor (Android Chrome; iOS asks permission) and says so when there is none. Approximate.
+- **🌙 Night guardian** (`js/guardian.js`): for the phone on a charger. Only night-relevant sounds count (fire/smoke alarm, siren, glass,
+  scream, baby/crying, knock/door/doorbell, dog, phone, plus the user's own sounds and unusual loud sounds), sensitivity ×1.3, and a
+  strong buzz + flash repeats every 4 s (up to ~2 min) until **Got it**. The screen is a dim clock; leaving shows a morning summary of what
+  happened overnight. The screen must stay on, since a web app cannot listen with the screen locked.
+
+### Glass look
+
+`styles.css` ends with a glassmorphism layer: frosted translucent surfaces over a fixed gradient-mesh background, light and dark.
+Surfaces stay dense enough for WCAG AA (worst case over the mesh: body text 13.7:1 light / 7.3:1 dark, muted text 6.3:1 / 5.4:1, alert
+tiers ≥ 5.2:1, primary button ≥ 5.3:1). It falls back to the solid theme without `backdrop-filter` or with
+`prefers-reduced-transparency`.
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

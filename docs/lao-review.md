@@ -132,6 +132,14 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Settings | ເຊື່ອມຕໍ່ສາຍແຮງສັ່ນ (Bluetooth) | Connect vibrating band |  |  |
 | Listen | ມື້ນີ້ / ທັງໝົດ / ມື້ນີ້ຍັງບໍ່ມີສຽງເຕືອນ | Today / Total / No alerts yet today |  |  |
 | Listen | ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ / ກຳລັງສາທິດ… | Demo: a horn approaches, then passes / Demo running |  |  |
+| Modes | ໂໝດພິເສດ / ຂ້າມຖະໜົນ / ຫາທິດສຽງ / ເຝົ້າກາງຄືນ | Special modes / Crossing / Find sound / Night guard |  |  |
+| Crossing | ບໍ່ໄດ້ຍິນລົດ / ມີສຽງລົດ / ລົດກຳລັງໃກ້ / ຖອຍຫຼັງ! | No vehicle heard / Vehicle sound nearby / A vehicle is getting close / Step back! |  |  |
+| Crossing | ຊ່ວຍເສີມເທົ່ານັ້ນ — ຫຼຽວຊ້າຍຂວາສະເໝີ. ງຽບ ≠ ປອດໄພ. | Assistive only: always look both ways. Quiet does not mean safe. |  |  |
+| Finder | ຫາທິດທາງສຽງ / ຫັນຕົວຊ້າໆ / ທາງນີ້! / ໃກ້ແລ້ວ / ຫັນໄປອີກ / ຜິດທາງ / ຍັງບໍ່ຊັດເຈນ / ບໍ່ພົບເຂັມທິດ | Find the sound / Turn slowly / This way! / Getting close / Keep turning / Wrong way / Not clear yet / No compass found |  |  |
+| Finder | ຖືໂທລະສັບໃຫ້ຮາບ ແລ້ວຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ. ຜົນເປັນການຄາດຄະເນ. | Hold the phone flat and turn slowly all the way round. Approximate. |  |  |
+| Guardian | ເຝົ້າກາງຄືນ / ກຳລັງເຝົ້າ / ຄືນນີ້ງຽບສະຫງົບ / ມີ N ການແຈ້ງເຕືອນ | Night guardian / Guarding / A quiet night / N alerts |  |  |
+| Guardian | ເສຍບສາຍສາກ ແລະ ວາງໂທລະສັບໄວ້ໃກ້ໆ. ຕ້ອງເປີດໜ້າຈໍຄ້າງໄວ້. | Plug in the charger and keep the phone close. The screen must stay on. |  |  |
+| Guardian | ຊມ / ນທ | h / min |  |  |
 
 ## 3. Questions for reviewers
 

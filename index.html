@@ -33,6 +33,13 @@
       <canvas id="viz" class="viz" width="360" height="120" aria-label="Live sound picture (spectrogram)" role="img"></canvas>
       <button id="btn-demo" class="btn btn-wide">▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small></button>
 
+      <h2>ໂໝດພິເສດ <small>Special modes</small></h2>
+      <div class="modes">
+        <button class="mode-btn" data-mode="crossing"><span aria-hidden="true">🚸</span><b>ຂ້າມຖະໜົນ</b><small>Crossing</small></button>
+        <button class="mode-btn" data-mode="finder"><span aria-hidden="true">🧭</span><b>ຫາທິດສຽງ</b><small>Find sound</small></button>
+        <button class="mode-btn" data-mode="guardian"><span aria-hidden="true">🌙</span><b>ເຝົ້າກາງຄືນ</b><small>Night guard</small></button>
+      </div>
+
       <div id="scene" class="muted" role="status" aria-live="off"></div>
 
       <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
@@ -158,6 +165,17 @@
         Audio never leaves this phone. Detection and alerts work fully offline.</p>
     </section>
   </main>
+
+  <!-- Special modes: crossing / find the sound / night guardian -->
+  <div id="mode" class="mode" role="dialog" aria-modal="true" aria-labelledby="mode-title" hidden>
+    <div id="mode-title" class="mode-title"></div>
+    <div id="mode-icon" class="mode-icon" aria-hidden="true"></div>
+    <canvas id="mode-compass" class="mode-compass" width="300" height="300" aria-hidden="true" hidden></canvas>
+    <div id="mode-status" class="mode-status" role="status" aria-live="assertive"></div>
+    <div id="mode-sub" class="mode-sub"></div>
+    <div id="mode-note" class="mode-note"></div>
+    <button id="mode-exit" class="btn mode-exit">ອອກ <small>Exit</small></button>
+  </div>
 
   <!-- Full-screen alert for danger / caution -->
   <div id="overlay" class="overlay" role="alertdialog" aria-modal="true" aria-labelledby="ov-text" aria-describedby="ov-meta" hidden>

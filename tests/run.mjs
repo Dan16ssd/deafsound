@@ -16,6 +16,9 @@ import { flashSchedule, bandLevel } from '../js/outputs.js';
 import { toRecord, addRecord, summarize, TIMELINE_MAX } from '../js/timeline.js';
 import { bandLevels, BAND_COUNT } from '../js/viz.js';
 import { demoScenario, DEMO_SECONDS } from '../js/demo.js';
+import { proximity, heartbeatPlan, CrossingController } from '../js/crossing.js';
+import { HeadingMap, levelOf, turn, closeness, hotCold } from '../js/finder.js';
+import { guardianFilter, NightSession, GUARDIAN_GROUPS } from '../js/guardian.js';
 import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
@@ -497,4 +500,73 @@ test('demo scenario: getting closer, then pitch falls = passed; and the real mod
   const { scores } = await yam.classify(win);
   const cands = yamnetCandidates(scores, 1, {});
   assert.ok(cands.some((c) => c.tier === 'danger'), `danger candidates: ${cands.map((c) => c.group)}`);
+});
+
+// ── crossing mode ───────────────────────────────────────────────────────────
+
+test('crossing: proximity grows with loudness and approach; heartbeat speeds up; far/passed is calm', () => {
+  const far = proximity({ movingConf: 0.5, rms: 0.012 });
+  const near = proximity({ movingConf: 0.6, rms: 0.08 });
+  const onTop = proximity({ movingConf: 0.9, rms: 0.25, approaching: true });
+  assert.ok(far < near && near < onTop, `${far} ${near} ${onTop}`);
+  assert.equal(proximity({ movingConf: 0.05, rms: 0.3, approaching: true }), 0, 'no vehicle sound → nothing');
+  assert.ok(proximity({ movingConf: 0.9, rms: 0.25, approaching: true, passed: true }) < onTop, 'passed reduces');
+
+  assert.equal(heartbeatPlan(0.05).state, 'clear');
+  const a = heartbeatPlan(0.25), b = heartbeatPlan(0.7);
+  assert.ok(b.intervalMs < a.intervalMs && b.pattern[0] > a.pattern[0], 'faster and stronger');
+  assert.equal(heartbeatPlan(0.9).state, 'back');
+  assert.ok(heartbeatPlan(0.9).pattern.length > 1);
+});
+
+test('crossing: controller beats on schedule, releases slowly, and goes quiet when stale', () => {
+  const c = new CrossingController();
+  c.update(0, { movingConf: 0.9, rms: 0.2, approaching: true });
+  assert.ok(c.due(0), 'first beat immediately');
+  assert.equal(c.due(10), null, 'not again yet');
+  c.update(1900, { movingConf: 0.9, rms: 0.2, approaching: true });
+  assert.ok(c.due(2000), 'next beat');
+  c.update(2100, { movingConf: 0, rms: 0.001 });   // vehicle sound drops out for a moment
+  assert.ok(c.plan(2100).state !== 'clear', 'released slowly, not instantly');
+  assert.equal(c.plan(2100 + 2000).state, 'clear', 'stale → clear');
+  assert.equal(c.due(2100 + 2000), null);
+});
+
+// ── find the sound ──────────────────────────────────────────────────────────
+
+test('finder: locates the loudest heading around the circle, including across 0°', () => {
+  const sweep = (target) => {
+    const m = new HeadingMap();
+    for (let lap = 0; lap < 2; lap++) for (let h = 0; h < 360; h += 5) m.add(h, 0.15 + 0.8 * Math.max(0, Math.cos(((h - target) * Math.PI) / 180)) ** 2);
+    return m.best();
+  };
+  for (const target of [90, 200, 355, 10]) {
+    const b = sweep(target);
+    assert.ok(Math.abs(turn(b.heading, target)) <= 12, `target ${target} → ${b.heading}`);
+    assert.ok(b.confidence > 0.3);
+  }
+  const partial = new HeadingMap();
+  for (let h = 0; h < 60; h += 5) partial.add(h, 0.5);
+  assert.equal(partial.best(), null, 'needs more turning');
+  const flat = new HeadingMap();
+  for (let h = 0; h < 360; h += 5) flat.add(h, 0.5);
+  assert.equal(flat.best().heading, null, 'uniform → no direction');
+  assert.equal(turn(350, 10), 20); assert.equal(turn(10, 350), -20); assert.equal(hotCold(closeness(0, 5)), 'hot'); assert.equal(hotCold(closeness(0, 170)), 'cold');
+  assert.ok(levelOf(0.3) > levelOf(0.01));
+});
+
+// ── night guardian ──────────────────────────────────────────────────────────
+
+test('guardian: keeps night sounds, drops the rest, raises quiet-tier door/dog; summary counts', () => {
+  const c = (group, tier, extra = {}) => ({ key: `yamnet:${group}`, group, tier, source: 'yamnet', lo: group, en: group, ...extra });
+  const out = guardianFilter([c('fire_alarm', 'danger'), c('music', 'info'), c('door', 'info'), c('speech', 'info'),
+    c('x', 'caution', { source: 'personal' }), c('novelty', 'caution', { source: 'novelty' })]);
+  assert.deepEqual(out.map((x) => x.group), ['fire_alarm', 'door', 'x', 'novelty']);
+  assert.equal(out.find((x) => x.group === 'door').tier, 'caution');
+  for (const id of GUARDIAN_GROUPS) assert.ok(GROUPS.some((g) => g.id === id), `${id} is a real group`);
+  const n = new NightSession(0);
+  n.record({ t: 100, key: 'a', lo: 'A', tier: 'danger' }); n.record({ t: 200, key: 'a', lo: 'A', tier: 'danger' }); n.record({ t: 300, key: 'b', lo: 'B', tier: 'caution' });
+  const s = n.summary(3600000);
+  assert.equal(s.count, 3); assert.equal(s.top[0].count, 2); assert.equal(s.durationMs, 3600000);
+  assert.equal(new NightSession(0).summary(1).first, null);
 });

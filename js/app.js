@@ -8,8 +8,11 @@ import { NoveltyDetector, NOVEL_ALERT } from './novelty.js';
 import { estimatePitch, PitchTrend } from './pitch.js';
 import { Flash, Band, bandLevel } from './outputs.js';
 import { loadTimeline, saveTimeline, addRecord, summarize } from './timeline.js';
-import { Spectrogram, bandLevels } from './viz.js';
+import { Spectrogram, bandLevels, cellColor } from './viz.js';
 import { demoScenario, DEMO_SECONDS } from './demo.js';
+import { CrossingController } from './crossing.js';
+import { HeadingMap, levelOf, turn, closeness, hotCold, norm360 } from './finder.js';
+import { GUARDIAN, guardianFilter, NightSession } from './guardian.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
@@ -208,6 +211,7 @@ function onChunk(chunk, receivedAt) {
   lastChunkAt = receivedAt;
   const level = rms(chunk);
   $('meter-bar').style.width = `${Math.min(100, level * 400)}%`;
+  if (mode === 'finder') finderSample(level);
 
   // Onset detection: a chunk much louder than the recent floor starts a burst
   // of faster analysis. The floor follows quiet quickly and loud slowly.
@@ -244,9 +248,10 @@ async function infer() {
     const inferMs = performance.now() - t0;
 
     scene.update(scores, Date.now());
+    onAnalysis(scores, liveRms);
     const sceneNow = scene.current();
     if (sceneNow !== lastScene) { lastScene = sceneNow; renderScene(sceneNow); }
-    let cands = yamnetCandidates(scores, settings.sensitivity, sceneOverrides(sceneNow, GROUPS, defaultThreshold, settings.thresholds));
+    let cands = yamnetCandidates(scores, sensitivity(), sceneOverrides(sceneNow, GROUPS, defaultThreshold, settings.thresholds));
     if (!settings.showInfo) cands = cands.filter((c) => c.tier !== 'info');
 
     if (matcher.sounds.length) {
@@ -288,6 +293,7 @@ function renderScene(id) {
 function handleCandidates(cands, arrivedAt) {
   const now = Date.now();
   cands = cands.filter((c) => !snooze.isSnoozed(c.key, now));
+  cands = modeFilter(cands);
   if (cands.length === 0) return;
 
   // Same sound still going → keep it on screen.
@@ -346,7 +352,7 @@ function handleCandidates(cands, arrivedAt) {
     console.log(`[DeafSound] ALERT ${top.tier} ${top.en} ${(top.confidence * 100).toFixed(0)}%`);
   }
 
-  for (const ev of log.slice(-fresh.length)) record(ev);
+  for (const ev of log.slice(-fresh.length)) { record(ev); onAlertInMode(ev); }
   saveMetrics();
 }
 
@@ -1032,3 +1038,278 @@ async function runDemo() {
   btn.innerHTML = '▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small>';
 }
 $('btn-demo').addEventListener('click', runDemo);
+
+
+// ── special modes ───────────────────────────────────────────────────────────
+
+const crossing = new CrossingController();
+const finder = new HeadingMap();
+const MOVING_CLASSES = GROUPS.filter((g) => g.moving).flatMap((g) => g.classes);
+let mode = null;
+let heading = null;
+let lastHeadingAt = 0;
+let night = null;
+let guardianEv = null;
+let guardianRepeats = 0;
+let guardianNext = 0;
+let modeTimers = [];
+let crossState = 'clear';
+
+const sensitivity = () => settings.sensitivity * (mode === 'guardian' ? GUARDIAN.sensitivity : 1);
+
+// Called on every analysis.
+function onAnalysis(scores, liveRms) {
+  if (mode !== 'crossing') return;
+  let movingConf = 0;
+  for (const c of MOVING_CLASSES) if (scores[c] > movingConf) movingConf = scores[c];
+  crossing.update(Date.now(), {
+    movingConf, rms: liveRms,
+    approaching: trend.state() === 'approaching',
+    passed: pitchTrend.state() === 'falling',
+  });
+}
+
+// Crossing handles vehicles itself; the night guardian only watches night sounds.
+function modeFilter(cands) {
+  if (mode === 'crossing') return cands.filter((c) => !GROUP_BY_ID.get(c.group)?.moving);
+  if (mode === 'guardian') return guardianFilter(cands);
+  return cands;
+}
+
+function onAlertInMode(ev) {
+  if (mode !== 'guardian' || ev.tier === 'info') return;
+  night?.record(ev);
+  guardianEv = ev;
+  guardianRepeats = 0;
+  guardianNext = Date.now() + GUARDIAN.repeatMs;
+  $('mode-sub').textContent = `${night.events.length} ການແຈ້ງເຕືອນ · alerts`;
+}
+
+const MODE_INFO = {
+  crossing: {
+    icon: '🚸', title: 'ຂ້າມຖະໜົນ · Crossing',
+    note: 'ຊ່ວຍເສີມເທົ່ານັ້ນ — ຫຼຽວຊ້າຍຂວາສະເໝີ. ງຽບ ≠ ປອດໄພ.\nAssistive only: always look both ways. Quiet does not mean safe.',
+  },
+  finder: {
+    icon: '🧭', title: 'ຫາທິດທາງສຽງ · Find the sound',
+    note: 'ຖືໂທລະສັບໃຫ້ຮາບ ແລ້ວຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ. ຜົນເປັນການຄາດຄະເນ.\nHold the phone flat and turn slowly all the way round. Approximate.',
+  },
+  guardian: {
+    icon: '🌙', title: 'ເຝົ້າກາງຄືນ · Night guardian',
+    note: 'ເສຍບສາຍສາກ ແລະ ວາງໂທລະສັບໄວ້ໃກ້ໆ. ຕ້ອງເປີດໜ້າຈໍຄ້າງໄວ້.\nPlug in the charger and keep the phone close. The screen must stay on.',
+  },
+};
+
+const CROSS_TEXT = {
+  clear: ['✅', 'ບໍ່ໄດ້ຍິນລົດ', 'No vehicle heard'],
+  near: ['👂', 'ມີສຽງລົດ', 'Vehicle sound nearby'],
+  close: ['⚠️', 'ລົດກຳລັງໃກ້', 'A vehicle is getting close'],
+  back: ['⛔', 'ຖອຍຫຼັງ!', 'Step back!'],
+};
+
+async function enterMode(name) {
+  if (mode) return;
+  if (!mic) await start();
+  if (!mic) return;
+  mode = name;
+  const info = MODE_INFO[name];
+  const el = $('mode');
+  el.className = `mode mode-${name}`;
+  el.hidden = false;
+  $('mode-title').textContent = info.title;
+  $('mode-icon').textContent = info.icon;
+  $('mode-note').textContent = info.note;
+  $('mode-note').style.whiteSpace = 'pre-line';
+  $('mode-sub').textContent = '';
+  $('mode-compass').hidden = name !== 'finder';
+  $('mode-icon').hidden = name === 'finder';
+  $('mode-exit').focus({ preventScroll: true });
+
+  if (name === 'crossing') {
+    crossing.reset(); crossState = 'clear';
+    setCross('clear');
+    modeTimers.push(setInterval(crossingTick, 50));
+  } else if (name === 'finder') {
+    finder.reset(); heading = null;
+    $('mode-status').textContent = 'ກຳລັງເລີ່ມ… Starting';
+    await startCompass();
+    modeTimers.push(setInterval(finderTick, 100));
+    requestAnimationFrame(drawCompass);
+  } else if (name === 'guardian') {
+    night = new NightSession(Date.now());
+    guardianEv = null;
+    clockTick();
+    modeTimers.push(setInterval(clockTick, 1000), setInterval(guardianRepeat, 1000));
+  }
+}
+
+function leaveMode() {
+  modeTimers.forEach(clearInterval);
+  modeTimers = [];
+  stopCompass();
+  flash.cancel();
+  navigator.vibrate?.(0);
+  guardianEv = null;
+  mode = null;
+  $('mode').hidden = true;
+}
+
+// Guardian shows a morning summary first; a second tap closes it.
+function exitMode() {
+  if (mode === 'guardian' && night && !$('mode').classList.contains('summary')) {
+    const s = night.summary(Date.now());
+    modeTimers.forEach(clearInterval); modeTimers = [];
+    guardianEv = null;
+    $('mode').classList.add('summary');
+    $('mode-icon').textContent = '☀️';
+    const h = Math.floor(s.durationMs / 3600000), m = Math.round((s.durationMs % 3600000) / 60000);
+    $('mode-status').textContent = s.count ? `ມີ ${s.count} ການແຈ້ງເຕືອນ` : 'ຄືນນີ້ງຽບສະຫງົບ';
+    $('mode-sub').textContent = `${h} ຊມ ${m} ນທ · ${s.count ? s.top.map((g) => `${g.icon ?? ''} ${g.lo} ×${g.count}`).join('  ·  ') : 'No alerts overnight'}`;
+    $('mode-note').textContent = '';
+    return;
+  }
+  $('mode').classList.remove('summary');
+  night = null;
+  leaveMode();
+}
+
+// ── crossing ────────────────────────────────────────────────────────────────
+
+function setCross(state) {
+  const [icon, lo, en] = CROSS_TEXT[state];
+  $('mode-icon').textContent = icon;
+  $('mode-status').textContent = lo;
+  $('mode-sub').textContent = en;
+  $('mode').dataset.state = state;
+}
+
+function crossingTick() {
+  const now = Date.now();
+  const plan = crossing.plan(now);
+  if (plan.state !== crossState) {
+    crossState = plan.state;
+    setCross(plan.state);
+  }
+  const beat = crossing.due(now);
+  if (beat) {
+    navigator.vibrate?.(beat);
+    if (settings.flash && plan.state !== 'near') flash.play(beat);
+    band.alert(plan.state === 'back' ? 2 : plan.state === 'close' ? 1 : 0);
+  }
+}
+
+// ── find the sound ──────────────────────────────────────────────────────────
+
+function onOrientation(e) {
+  const h = e.webkitCompassHeading ?? (e.alpha == null ? null : 360 - e.alpha);
+  if (h == null || Number.isNaN(h)) return;
+  heading = norm360(h);
+  lastHeadingAt = performance.now();
+}
+
+async function startCompass() {
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      await DeviceOrientationEvent.requestPermission();
+    }
+  } catch { /* permission denied → fall through to the "no compass" note */ }
+  window.addEventListener('deviceorientationabsolute', onOrientation, true);
+  window.addEventListener('deviceorientation', onOrientation, true);
+}
+
+function stopCompass() {
+  window.removeEventListener('deviceorientationabsolute', onOrientation, true);
+  window.removeEventListener('deviceorientation', onOrientation, true);
+}
+
+function finderSample(level) {
+  if (heading !== null && performance.now() - lastHeadingAt < 1000) finder.add(heading, levelOf(level));
+}
+
+let nextTick = 0;
+function finderTick() {
+  const status = $('mode-status'), sub = $('mode-sub');
+  if (heading === null || performance.now() - lastHeadingAt > 1500) {
+    status.textContent = 'ບໍ່ພົບເຂັມທິດ';
+    sub.textContent = 'No compass sensor available on this device';
+    return;
+  }
+  const best = finder.best();
+  if (!best) {
+    status.textContent = '🔄 ຫັນຕົວຊ້າໆ';
+    sub.textContent = `Turn slowly · ${Math.round((finder.coverage() / 36) * 100)}%`;
+    return;
+  }
+  if (best.heading === null) {
+    status.textContent = '🌫️ ຍັງບໍ່ຊັດເຈນ';
+    sub.textContent = 'Sound seems to come from everywhere';
+    return;
+  }
+  const c = closeness(heading, best.heading);
+  const hc = hotCold(c);
+  status.textContent = { hot: '🔥 ທາງນີ້!', warm: '♨️ ໃກ້ແລ້ວ', cool: '🌤️ ຫັນໄປອີກ', cold: '❄️ ຜິດທາງ' }[hc];
+  sub.textContent = `${{ hot: 'Straight ahead', warm: 'Getting warmer', cool: 'Keep turning', cold: 'Wrong way' }[hc]} · ${Math.round(best.confidence * 100)}%`;
+  const now = performance.now();
+  if (c > 0.6 && now >= nextTick) {
+    navigator.vibrate?.([c > 0.85 ? 90 : 30]);
+    nextTick = now + 700 - 520 * c;
+  }
+}
+
+function drawCompass() {
+  if (mode !== 'finder') return;
+  requestAnimationFrame(drawCompass);
+  const cv = $('mode-compass'), g = cv.getContext('2d');
+  const W = cv.width, cx = W / 2, cy = W / 2, n = finder.cfg.bins;
+  const css = getComputedStyle(document.documentElement);
+  g.clearRect(0, 0, W, W);
+  const h = heading ?? 0;
+  for (let i = 0; i < n; i++) {
+    const a0 = ((i * 360 / n - h - 90) * Math.PI) / 180, a1 = (((i + 1) * 360 / n - h - 90) * Math.PI) / 180;
+    g.beginPath();
+    g.arc(cx, cy, W * 0.46, a0, a1);
+    g.arc(cx, cy, W * 0.33, a1, a0, true);
+    g.closePath();
+    g.fillStyle = finder.seen[i] ? cellColor(Math.min(1, finder.v[i] * 1.2), 'danger') : 'rgba(128,128,128,0.18)';
+    g.fill();
+  }
+  const best = finder.best();
+  if (best?.heading != null) {
+    const rel = (turn(h, best.heading) * Math.PI) / 180;
+    g.save();
+    g.translate(cx, cy);
+    g.rotate(rel);
+    g.fillStyle = css.getPropertyValue('--accent') || '#5b9bff';
+    g.beginPath();
+    g.moveTo(0, -W * 0.3); g.lineTo(W * 0.1, W * 0.04); g.lineTo(0, -W * 0.02); g.lineTo(-W * 0.1, W * 0.04);
+    g.closePath(); g.fill();
+    g.restore();
+  }
+  g.fillStyle = css.getPropertyValue('--text') || '#fff';   // "phone points here" marker
+  g.beginPath(); g.moveTo(cx, 4); g.lineTo(cx - 9, 22); g.lineTo(cx + 9, 22); g.closePath(); g.fill();
+}
+
+// ── night guardian ──────────────────────────────────────────────────────────
+
+function clockTick() {
+  if (mode !== 'guardian' || $('mode').classList.contains('summary')) return;
+  const d = new Date();
+  $('mode-status').textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (!night.events.length) $('mode-sub').textContent = 'ກຳລັງເຝົ້າ… Guarding';
+}
+
+// Keep buzzing (and re-showing the alert) until the user taps Got it.
+function guardianRepeat() {
+  const now = Date.now();
+  if (mode !== 'guardian' || !guardianEv || now < guardianNext) return;
+  guardianNext = now + GUARDIAN.repeatMs;
+  if (++guardianRepeats > GUARDIAN.maxRepeats) { guardianEv = null; return; }
+  navigator.vibrate?.(GUARDIAN.pattern);
+  flash.play(GUARDIAN.pattern);
+  band.alert(2);
+  showAlert(guardianEv);
+}
+
+$('ov-close').addEventListener('click', () => { guardianEv = null; flash.cancel(); });
+document.querySelectorAll('.mode-btn').forEach((b) => b.addEventListener('click', () => enterMode(b.dataset.mode)));
+$('mode-exit').addEventListener('click', exitMode);
