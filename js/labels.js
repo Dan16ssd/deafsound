@@ -30,14 +30,15 @@ export const TIERS = {
 };
 
 // threshold overrides the tier default when present.
+// moving: true → the source can travel, so a rising level means it is approaching (js/approach.js).
 export const GROUPS = [
   // ── danger ────────────────────────────────────────────────────────────
-  { id: 'horn', icon: '📯', tier: 'danger', lo: 'ມີສຽງແກລົດ', en: 'Vehicle horn', classes: [302, 312], threshold: 0.25 },
-  { id: 'siren', icon: '🚨', tier: 'danger', lo: 'ມີສຽງໄຊເຣນ ລົດສຸກເສີນ', en: 'Siren / emergency vehicle', classes: [316, 317, 318, 319, 390, 391] },
-  { id: 'motorbike', icon: '🏍️', tier: 'danger', lo: 'ມີລົດຈັກຢູ່ໃກ້', en: 'Motorbike / revving engine', classes: [320, 347] },
-  { id: 'vehicle_pass', icon: '🚗', tier: 'danger', lo: 'ມີລົດແລ່ນຜ່ານໃກ້', en: 'Car / truck / bus passing', classes: [308, 310, 315], threshold: 0.35 },
+  { id: 'horn', moving: true, icon: '📯', tier: 'danger', lo: 'ມີສຽງແກລົດ', en: 'Vehicle horn', classes: [302, 312], threshold: 0.25 },
+  { id: 'siren', moving: true, icon: '🚨', tier: 'danger', lo: 'ມີສຽງໄຊເຣນ ລົດສຸກເສີນ', en: 'Siren / emergency vehicle', classes: [316, 317, 318, 319, 390, 391] },
+  { id: 'motorbike', moving: true, icon: '🏍️', tier: 'danger', lo: 'ມີລົດຈັກຢູ່ໃກ້', en: 'Motorbike / revving engine', classes: [320, 347] },
+  { id: 'vehicle_pass', moving: true, icon: '🚗', tier: 'danger', lo: 'ມີລົດແລ່ນຜ່ານໃກ້', en: 'Car / truck / bus passing', classes: [308, 310, 315], threshold: 0.35 },
   { id: 'skid', icon: '🛑', tier: 'danger', lo: 'ລົດເບຣກແຮງ', en: 'Skidding / tyre squeal', classes: [306, 307], threshold: 0.25 },
-  { id: 'train', icon: '🚆', tier: 'danger', lo: 'ມີລົດໄຟ', en: 'Train', classes: [323, 324, 325], threshold: 0.35 },
+  { id: 'train', moving: true, icon: '🚆', tier: 'danger', lo: 'ມີລົດໄຟ', en: 'Train', classes: [323, 324, 325], threshold: 0.35 },
   { id: 'fire_alarm', icon: '🔥', tier: 'danger', lo: 'ສັນຍານເຕືອນໄຟໄໝ້', en: 'Fire / smoke alarm', classes: [393, 394] },
   { id: 'explosion', icon: '💥', tier: 'danger', lo: 'ສຽງລະເບີດ ຫຼື ສຽງປືນ', en: 'Explosion / gunshot', classes: [420, 421, 422, 424] },
   { id: 'scream', icon: '😱', tier: 'danger', lo: 'ມີຄົນຮ້ອງສຽງດັງ', en: 'Screaming', classes: [11], threshold: 0.35 },
@@ -46,8 +47,8 @@ export const GROUPS = [
   // ── caution ───────────────────────────────────────────────────────────
   { id: 'shout', icon: '🗣️', tier: 'caution', lo: 'ມີຄົນຮ້ອງເອີ້ນ', en: 'Shouting / calling out', classes: [6, 7, 9, 10] },
   { id: 'dog', icon: '🐕', tier: 'caution', lo: 'ມີໝາເຫົ່າ', en: 'Dog barking', classes: [69, 70, 117], threshold: 0.45 },
-  { id: 'reversing', icon: '🚚', tier: 'caution', lo: 'ມີລົດກຳລັງຖອຍຫຼັງ', en: 'Reversing beeps', classes: [313] },
-  { id: 'vehicle', icon: '🚙', tier: 'caution', lo: 'ມີລົດຢູ່ໃກ້', en: 'Motor vehicle nearby', classes: [294, 300, 301], threshold: 0.6 },
+  { id: 'reversing', moving: true, icon: '🚚', tier: 'caution', lo: 'ມີລົດກຳລັງຖອຍຫຼັງ', en: 'Reversing beeps', classes: [313] },
+  { id: 'vehicle', moving: true, icon: '🚙', tier: 'caution', lo: 'ມີລົດຢູ່ໃກ້', en: 'Motor vehicle nearby', classes: [294, 300, 301], threshold: 0.6 },
   { id: 'doorbell', icon: '🔔', tier: 'caution', lo: 'ມີຄົນກົດກະດິ່ງປະຕູ', en: 'Doorbell', classes: [349, 350], threshold: 0.35 },
   { id: 'knock', icon: '🚪', tier: 'caution', lo: 'ມີຄົນເຄາະປະຕູ', en: 'Knock', classes: [353], threshold: 0.45 },
   { id: 'phone', icon: '📞', tier: 'caution', lo: 'ໂທລະສັບດັງ', en: 'Phone ringing', classes: [383, 384, 385], threshold: 0.45 },

@@ -1,6 +1,6 @@
 // Offline cache for the app shell, TensorFlow.js and the YAMNet model.
 // Only same-origin GETs are cached. The narration POST is never touched.
-const CACHE = 'deafsound-v5';
+const CACHE = 'deafsound-v6';
 
 const ASSETS = [
   './',
@@ -12,6 +12,7 @@ const ASSETS = [
   'js/audio.js',
   'js/capture-worklet.js',
   'js/detector.js',
+  'js/approach.js',
   'js/labels.js',
   'js/library.js',
   'js/narrate.js',

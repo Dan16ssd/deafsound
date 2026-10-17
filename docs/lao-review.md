@@ -121,6 +121,7 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Settings | ເປີດໃຊ້ | Turn on |  |  |
 | Settings | ສະຖິຕິ | Statistics |  |  |
 | Settings | ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ. ການກວດຈັບ ແລະ ການເຕືອນເຮັດວຽກໄດ້ໂດຍບໍ່ມີອິນເຕີເນັດ. | Sound never leaves the phone. Detection and alerts work without internet. |  |  |
+| Alert | ກຳລັງເຂົ້າມາໃກ້ | Getting closer (added after a vehicle's name when its sound keeps getting louder) |  |  |
 
 ## 3. Questions for reviewers
 

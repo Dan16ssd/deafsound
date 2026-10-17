@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 
 import { TIERS, GROUPS } from '../js/labels.js';
 import { yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestThreshold } from '../js/detector.js';
+import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
 import { rms, RingBuffer, CHUNK_SECONDS } from '../js/audio.js';
 import { WINDOW } from '../js/yamnet.js';
@@ -265,4 +266,22 @@ test('dev server serves only app files (case-insensitive) and survives bad URLs'
   } finally {
     server.kill();
   }
+});
+
+// ── getting closer ──────────────────────────────────────────────────────────
+
+test('approach: rising level → approaching, falling → receding, flat/spike → steady', () => {
+  const run = (f) => { const tr = new LevelTrend(); for (let t = 0; t <= 2000; t += 100) tr.push(t, f(t)); return tr.state(); };
+  assert.equal(run((t) => 0.01 * 10 ** (t / 2000)), 'approaching');   // +20 dB over 2 s
+  assert.equal(run((t) => 0.2 * 10 ** (-t / 2000)), 'receding');
+  assert.equal(run(() => 0.1), 'steady');
+  assert.equal(run((t) => (t === 1000 ? 0.5 : 0.05)), 'steady');       // single spike
+  assert.equal(run((t) => 0.0001 * 10 ** (t / 2000)), 'steady');       // near-silence ignored
+  const short = new LevelTrend(); short.push(0, 0.01); short.push(200, 0.1); assert.equal(short.state(), 'steady');
+});
+
+test('approach: only travelling sources are flagged moving', () => {
+  const moving = GROUPS.filter((g) => g.moving).map((g) => g.id);
+  for (const id of ['horn', 'siren', 'motorbike', 'vehicle_pass', 'train']) assert.ok(moving.includes(id), id);
+  for (const id of ['doorbell', 'speech', 'dog']) assert.ok(!moving.includes(id), id);
 });

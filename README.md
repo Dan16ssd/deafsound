@@ -78,6 +78,14 @@ analysis. Audio arrives in 20 ms chunks. The app analyzes every 100 ms normally;
 recent noise floor, it schedules an analysis 40 ms later and keeps analyzing every 40 ms for 0.6 s. If a phone's
 inference is slower than that, windows are skipped rather than queued, so alerts never fall behind.
 
+### Getting closer
+
+For sources that can travel (horn, siren, motorbike, passing vehicle, train, reversing, nearby vehicle) the app tracks the
+loudness trend over the last 2.5 s (`js/approach.js`). If it climbs steadily (≥ 5 dB total, ≥ 3 dB/s) the alert is repeated
+once, even inside the cooldown, with a stronger 3-part buzz and "ກຳລັງເຂົ້າມາໃກ້ · Getting closer" added to the text. It tells
+a deaf pedestrian which vehicle is heading toward them, which direction-free detection can't. It re-alerts at most every 8 s per sound.
+It is a loudness heuristic, not distance measurement: a source that simply gets louder (an engine revving in place) can trigger it too.
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

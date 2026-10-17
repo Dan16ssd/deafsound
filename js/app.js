@@ -1,6 +1,7 @@
 import { MicStream, RingBuffer, rms, SAMPLE_RATE } from './audio.js';
 import { loadYamnet, WINDOW } from './yamnet.js';
 import { TIERS, GROUPS, PERSONAL_ICON } from './labels.js';
+import { LevelTrend, APPROACH } from './approach.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
   PersonalMatcher, clipVector, consistency, buildSound,
@@ -21,6 +22,8 @@ const ONSET_RATIO = 2.5;       // chunk loudness vs. running noise floor
 const ONSET_MIN_RMS = 0.004;
 const ONSET_LEAD = Math.round(SAMPLE_RATE * 0.04);
 const HOLD_MS = 4000;                       // how long an alert stays on screen
+const GROUP_BY_ID = new Map(GROUPS.map((g) => [g.id, g]));
+const APPROACH_LO = 'ກຳລັງເຂົ້າມາໃກ້'; // "getting closer"
 const FULLSCREEN_TIERS = new Set(['danger', 'caution']);
 const $ = (id) => document.getElementById(id);
 
@@ -171,6 +174,8 @@ document.addEventListener('click', () => {
   if (mic && !wakeLock) acquireWakeLock();
 });
 
+const trend = new LevelTrend();
+const approachAlerted = new Map(); // key → time of last escalation
 let noiseFloor = 0;
 let burstUntil = 0;
 
@@ -207,6 +212,7 @@ async function infer() {
   try {
     const win = ring.latest(WINDOW);
     const liveRms = rms(win);
+    trend.push(Date.now(), liveRms);
     const t0 = performance.now();
     const { scores, embedding } = await yam.classify(win);
     const inferMs = performance.now() - t0;
@@ -239,6 +245,19 @@ function handleCandidates(cands, arrivedAt) {
 
   // Same sound still going → keep it on screen.
   if (shown && cands.some((c) => c.key === shown.key)) extendHold();
+
+  // A moving source that keeps getting louder is coming toward the user:
+  // escalate once (stronger buzz, "getting closer" text) even inside cooldown.
+  const mover = cands.find((c) => GROUP_BY_ID.get(c.group)?.moving && c.tier !== 'info');
+  if (mover && trend.state() === 'approaching' && now - (approachAlerted.get(mover.key) ?? 0) > APPROACH.realertMs) {
+    approachAlerted.set(mover.key, now);
+    const ev = { ...mover, approach: true, t: now, id: `${now}-${mover.key}-approach` };
+    log.push(ev);
+    navigator.vibrate?.(APPROACH.vibrate);
+    showAlert(ev);
+    renderEvents();
+    return;
+  }
 
   const fresh = cands.filter((c) => cooldown.ready(c.key, c.tier, now));
   if (fresh.length === 0) return;
@@ -288,8 +307,8 @@ function showAlert(ev) {
   restartFlash(card);
   $('alert-icon').textContent = icon;
   $('alert-tier').textContent = tierLabel;
-  $('alert-text').textContent = ev.lo;
-  $('alert-meta').textContent = meta;
+  $('alert-text').textContent = ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.lo;
+  $('alert-meta').textContent = ev.approach ? `↗ Getting closer · ${meta}` : meta;
   $('btn-wrong').hidden = !canMarkWrong;
 
   // Danger and caution take over the whole screen; info stays in the card so
@@ -299,8 +318,8 @@ function showAlert(ev) {
     overlay.className = `overlay tier-${ev.tier}`;
     $('ov-tier').textContent = `${TIERS[ev.tier].icon} ${tierLabel}`;
     $('ov-icon').textContent = icon;
-    $('ov-text').textContent = ev.lo;
-    $('ov-meta').textContent = meta;
+    $('ov-text').textContent = ev.approach ? `${ev.lo} · ${APPROACH_LO}` : ev.lo;
+    $('ov-meta').textContent = ev.approach ? `↗ Getting closer · ${meta}` : meta;
     $('ov-wrong').hidden = !canMarkWrong;
     overlay.hidden = false;
     restartFlash(overlay);
