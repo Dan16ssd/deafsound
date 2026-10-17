@@ -3,6 +3,8 @@ import { loadYamnet, WINDOW } from './yamnet.js';
 import { TIERS, GROUPS, PERSONAL_ICON } from './labels.js';
 import { LevelTrend, APPROACH } from './approach.js';
 import { BackgroundPool, HEAD, headProb, withHead, addHardNegative } from './head.js';
+import { SceneModel, SCENES, sceneOverrides } from './scene.js';
+import { NoveltyDetector, NOVEL_ALERT } from './novelty.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
 import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
@@ -180,6 +182,9 @@ document.addEventListener('click', () => {
 const trend = new LevelTrend();
 const bgPool = new BackgroundPool();
 const snooze = new Snooze();
+const scene = new SceneModel();
+const novelty = new NoveltyDetector();
+let lastScene = null;
 let lastLevel = 0;
 let poolTick = 0;
 const approachAlerted = new Map(); // key → time of last escalation
@@ -225,7 +230,10 @@ async function infer() {
     const { scores, embedding } = await yam.classify(win);
     const inferMs = performance.now() - t0;
 
-    let cands = yamnetCandidates(scores, settings.sensitivity, settings.thresholds);
+    scene.update(scores, Date.now());
+    const sceneNow = scene.current();
+    if (sceneNow !== lastScene) { lastScene = sceneNow; renderScene(sceneNow); }
+    let cands = yamnetCandidates(scores, settings.sensitivity, sceneOverrides(sceneNow, GROUPS, defaultThreshold, settings.thresholds));
     if (!settings.showInfo) cands = cands.filter((c) => c.tier !== 'info');
 
     if (matcher.sounds.length) {
@@ -234,12 +242,18 @@ async function infer() {
         if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', emb: embedding, icon: PERSONAL_ICON, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
       }
       updateLiveSims(results);
-      // Feed the background pool from non-matching moments (~2/s), then train
-      // heads for sounds that don't have one yet.
-      if (!results.some((r) => r.hit) && liveRms > 0.002 && ++poolTick % 5 === 0) {
-        bgPool.add(embedding);
-        if (bgPool.items.length === HEAD.minNegatives) trainMissingHeads();
-      }
+    }
+
+    // Unknown-but-loud sounds: nothing above caution matched, yet it is unlike the recent background.
+    const known = cands.some((c) => c.tier !== 'info');
+    const nv = novelty.check({ embedding, pool: bgPool.items, rms: liveRms, noiseFloor, known, now: Date.now() });
+    if (nv.fire) cands.push({ ...NOVEL_ALERT, confidence: Math.min(1, nv.novelty) });
+
+    // Feed the background pool from ordinary moments (~2/s); then train heads
+    // for personal sounds that don't have one yet.
+    if (!known && !nv.fire && liveRms > 0.002 && ++poolTick % 5 === 0) {
+      bgPool.add(embedding);
+      if (bgPool.items.length === HEAD.minNegatives) trainMissingHeads();
     }
 
     handleCandidates(rankCandidates(cands), arrivedAt);
@@ -251,6 +265,11 @@ async function infer() {
   } finally {
     busy = false;
   }
+}
+
+function renderScene(id) {
+  const sc = SCENES[id];
+  $('scene').textContent = sc ? `${sc.icon} ${sc.lo} · ${sc.en}` : id === 'mixed' ? 'ສຽງປະສົມ · Mixed surroundings' : 'ງຽບ · Quiet surroundings';
 }
 
 function handleCandidates(cands, arrivedAt) {

@@ -122,6 +122,9 @@ The app team applies changes in `js/labels.js` (alert labels) and `index.html` /
 | Settings | ສະຖິຕິ | Statistics |  |  |
 | Settings | ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ. ການກວດຈັບ ແລະ ການເຕືອນເຮັດວຽກໄດ້ໂດຍບໍ່ມີອິນເຕີເນັດ. | Sound never leaves the phone. Detection and alerts work without internet. |  |  |
 | Alert | ກຳລັງເຂົ້າມາໃກ້ | Getting closer (added after a vehicle's name when its sound keeps getting louder) |  |  |
+| Alert | ມີສຽງດັງທີ່ບໍ່ຄຸ້ນເຄີຍ | Unusual loud sound |  |  |
+| Listen | ຖະໜົນ / ໃນເຮືອນ / ບ່ອນມີຄົນຫຼາຍ / ວັດ / ທຳມະຊາດ / ງຽບ / ສຽງປະສົມ | Street / Home / Crowd or market / Temple / Outdoors / Quiet / Mixed surroundings |  |  |
+| Alert | ປິດສຽງນີ້ 10 ນາທີ | Snooze this sound for 10 minutes |  |  |
 
 ## 3. Questions for reviewers
 

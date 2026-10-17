@@ -98,6 +98,18 @@ It is a loudness heuristic, not distance measurement: a source that simply gets 
   horn that is approaching) the phone uses a longer 4-part buzz and the alert is marked ‼.
 - **Snooze**: caution/info alerts get a 10-minute snooze button (for a known repetitive sound). Danger-tier sounds can never be snoozed.
 
+### Third and fourth models: scene context and novelty
+
+- **Scene context** (`js/scene.js`): YAMNet class scores are averaged over ~20 s into a place guess (street, home, crowd/market,
+  temple, nature, or quiet/mixed), shown as a chip on the Listen tab. Each scene nudges *non-danger* thresholds: "vehicle nearby"
+  and traffic get less twitchy on a street, doorbell/knock/phone more sensitive at home, temple drums and chanting quieter at a temple.
+  **Danger thresholds are never changed**, and a threshold you tuned yourself always wins.
+- **Novelty detector** (`js/novelty.js`): the app remembers its own recent background sounds. A loud sound (≥ 2.5× the noise floor)
+  that is unlike anything in that memory, and that no label or personal sound explains, raises a caution
+  "ມີສຽງດັງທີ່ບໍ່ຄຸ້ນເຄີຍ · Unusual loud sound". This covers sounds the label map doesn't know. The trigger level adapts to the
+  background spread on that phone, it needs ~40 background samples (about 20 s) before arming, and it holds 15 s per event; if the
+  unusual sound continues it soon becomes "familiar" and stops alerting.
+
 ### Screen-on listening
 
 The app holds a screen wake lock while listening. If the lock is refused or lost, a banner tells the user to keep the

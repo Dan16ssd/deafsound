@@ -9,6 +9,8 @@ import { spawn } from 'node:child_process';
 import { TIERS, GROUPS } from '../js/labels.js';
 import { yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestThreshold } from '../js/detector.js';
 import { BackgroundPool, headProb, withHead, addHardNegative, HEAD } from '../js/head.js';
+import { SceneModel, SCENES, sceneOverrides } from '../js/scene.js';
+import { NoveltyDetector, NOVELTY } from '../js/novelty.js';
 import { assessRisk, vibrationFor, Snooze, RISK } from '../js/risk.js';
 import { LevelTrend } from '../js/approach.js';
 import * as L from '../js/library.js';
@@ -350,4 +352,56 @@ test('snooze: works for caution/info, expires, never for danger', () => {
   assert.equal(s.isSnoozed('yamnet:dog', 6001), false, 'expired');
   assert.equal(s.snooze('yamnet:horn', 'danger', 0), false);
   assert.equal(s.isSnoozed('yamnet:horn', 1), false);
+});
+
+// ── scene context ───────────────────────────────────────────────────────────
+
+const sceneScores = (o) => { const s = new Float32Array(521); for (const [c, v] of Object.entries(o)) s[c] = v; return s; };
+
+test('scene: pooled class scores pick street / home / quiet, and danger thresholds never rise', () => {
+  const m = new SceneModel();
+  assert.equal(m.current(), 'quiet');
+  for (let t = 0; t < 40000; t += 1000) m.update(sceneScores({ 300: 0.7, 321: 0.6 }), t);
+  assert.equal(m.current(), 'street');
+  const h = new SceneModel();
+  for (let t = 0; t < 40000; t += 1000) h.update(sceneScores({ 348: 0.6, 364: 0.5 }), t);
+  assert.equal(h.current(), 'home');
+  const mixed = new SceneModel();
+  for (let t = 0; t < 40000; t += 1000) mixed.update(sceneScores({ 300: 0.6, 348: 0.58 }), t);
+  assert.equal(mixed.current(), 'mixed');
+  // one passing sound doesn't flip the scene
+  m.update(sceneScores({ 348: 0.9 }), 41000);
+  assert.equal(m.current(), 'street');
+
+  const street = sceneOverrides('street', GROUPS, defaultThreshold, { traffic: 0.5 });
+  assert.ok(street.vehicle > defaultThreshold(GROUPS.find((g) => g.id === 'vehicle')), 'vehicle less twitchy on street');
+  assert.equal(street.traffic, 0.5, 'user override wins');
+  const home = sceneOverrides('home', GROUPS, defaultThreshold);
+  assert.ok(home.doorbell < defaultThreshold(GROUPS.find((g) => g.id === 'doorbell')), 'doorbell more sensitive at home');
+  for (const sc of Object.keys(SCENES)) {
+    const o = sceneOverrides(sc, GROUPS, defaultThreshold);
+    for (const g of GROUPS.filter((x) => x.tier === 'danger')) assert.equal(o[g.id], undefined, `${sc}/${g.id} untouched`);
+  }
+  assert.deepEqual(sceneOverrides('quiet', GROUPS, defaultThreshold, { a: 1 }), { a: 1 });
+});
+
+// ── novelty ─────────────────────────────────────────────────────────────────
+
+test('novelty: fires on a loud unfamiliar sound, not on familiar background or quiet/known ones', async () => {
+  const pool = new BackgroundPool();
+  for (let i = 0; i < 60; i++) pool.add(await embed(noise(WINDOW, 0.01 + 0.0005 * i)));
+  const d = new NoveltyDetector();
+  const call = (e, extra = {}) => d.check({ embedding: e, pool: pool.items, rms: 0.1, noiseFloor: 0.01, known: false, now: 100000, ...extra });
+
+  assert.equal(d.check({ embedding: await embed(horn(WINDOW, 0.4)), pool: pool.items.slice(0, 5), rms: 0.1, noiseFloor: 0.01, known: false, now: 0 }).armed, false, 'unarmed with a tiny pool');
+  for (let i = 0; i < 20; i++) call(await embed(noise(WINDOW, 0.012)), { rms: 0.005 }); // learn the background spread
+
+  const strange = await embed(mix(dingdong(WINDOW, 1600, 0.4, 1.3), horn(WINDOW, 0.3)));
+  assert.equal(call(await embed(noise(WINDOW, 0.012))).fire, false, 'familiar background');
+  assert.equal(call(strange, { rms: 0.005 }).fire, false, 'too quiet');
+  assert.equal(call(strange, { known: true }).fire, false, 'already explained by a label');
+  const r = call(strange);
+  assert.equal(r.fire, true, `novelty ${r.novelty.toFixed(2)} vs ${d.threshold().toFixed(2)}`);
+  assert.equal(call(strange, { now: 100000 + NOVELTY.holdMs - 1 }).fire, false, 'held');
+  assert.equal(call(strange, { now: 100000 + NOVELTY.holdMs + 1 }).fire, true, 'after hold');
 });
