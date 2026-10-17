@@ -7,7 +7,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { TIERS, GROUPS } from '../js/labels.js';
-import { yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestThreshold } from '../js/detector.js';
+import { Persistence, yamnetCandidates, rankCandidates, Cooldown, defaultThreshold, suggestThreshold } from '../js/detector.js';
 import { BackgroundPool, headProb, withHead, addHardNegative, HEAD } from '../js/head.js';
 import { SceneModel, SCENES, sceneOverrides } from '../js/scene.js';
 import { NoveltyDetector, NOVELTY } from '../js/novelty.js';
@@ -569,4 +569,18 @@ test('guardian: keeps night sounds, drops the rest, raises quiet-tier door/dog; 
   const s = n.summary(3600000);
   assert.equal(s.count, 3); assert.equal(s.top[0].count, 2); assert.equal(s.durationMs, 3600000);
   assert.equal(new NightSession(0).summary(1).first, null);
+});
+
+// ── persistence ─────────────────────────────────────────────────────────────
+
+test('persistence: one-frame caution/info blips are dropped; danger and personal pass instantly', () => {
+  const p = new Persistence(2, 700);
+  const dog = { key: 'yamnet:dog', tier: 'caution', source: 'yamnet' };
+  const horn = { key: 'yamnet:horn', tier: 'danger', source: 'yamnet' };
+  const mine = { key: 'personal:1', tier: 'caution', source: 'personal' };
+  assert.deepEqual(p.filter([dog, horn, mine], 0).map((c) => c.key), ['yamnet:horn', 'personal:1'], 'dog waits');
+  assert.deepEqual(p.filter([], 100), [], 'gone → forgotten');
+  assert.deepEqual(p.filter([dog], 200), [], 'blip again: still only one hit');
+  assert.deepEqual(p.filter([dog], 300).map((c) => c.key), ['yamnet:dog'], 'second hit within the window');
+  assert.deepEqual(p.filter([dog], 5000), [], 'old hits expire');
 });

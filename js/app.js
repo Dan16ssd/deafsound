@@ -14,7 +14,7 @@ import { CrossingController } from './crossing.js';
 import { HeadingMap, levelOf, turn, closeness, hotCold, norm360 } from './finder.js';
 import { GUARDIAN, guardianFilter, NightSession } from './guardian.js';
 import { assessRisk, vibrationFor, Snooze } from './risk.js';
-import { yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
+import { Persistence, yamnetCandidates, rankCandidates, topClasses, Cooldown, defaultThreshold, suggestThreshold } from './detector.js';
 import {
   PersonalMatcher, clipVector, consistency, buildSound,
   listSounds, putSound, deleteSound,
@@ -72,6 +72,7 @@ const ring = new RingBuffer(SAMPLE_RATE * 4);
 const matcher = new PersonalMatcher();
 matcher.verify = (sound, e) => headProb(sound.head, e);
 const cooldown = new Cooldown();
+const persistence = new Persistence();
 const log = [];                 // recent events, in memory only
 let yamnetPromise = null;
 let yam = null;
@@ -253,6 +254,7 @@ async function infer() {
     if (sceneNow !== lastScene) { lastScene = sceneNow; renderScene(sceneNow); }
     let cands = yamnetCandidates(scores, sensitivity(), sceneOverrides(sceneNow, GROUPS, defaultThreshold, settings.thresholds));
     if (!settings.showInfo) cands = cands.filter((c) => c.tier !== 'info');
+    cands = persistence.filter(cands, Date.now());
 
     if (matcher.sounds.length) {
       const { results } = matcher.match(embedding, liveRms);

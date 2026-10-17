@@ -64,3 +64,28 @@ export class Cooldown {
     return true;
   }
 }
+
+// Persistence: a caution/info sound must show up in `minHits` analyses within
+// `windowMs` before it can alert, so one noisy frame (a cough read as "dog")
+// stays silent. Danger sounds and the user's own sounds are exempt: those must
+// never wait.
+export class Persistence {
+  constructor(minHits = 2, windowMs = 700) { this.minHits = minHits; this.windowMs = windowMs; this.hits = new Map(); }
+
+  filter(cands, now) {
+    const keep = [];
+    const present = new Set(cands.map((c) => c.key));
+    for (const [k, list] of this.hits) {
+      const fresh = list.filter((t) => now - t <= this.windowMs);
+      if (fresh.length && present.has(k)) this.hits.set(k, fresh); else if (!present.has(k)) this.hits.delete(k); else this.hits.set(k, fresh);
+    }
+    for (const c of cands) {
+      if (c.tier === 'danger' || c.source === 'personal' || c.source === 'test') { keep.push(c); continue; }
+      const list = this.hits.get(c.key) ?? [];
+      list.push(now);
+      this.hits.set(c.key, list);
+      if (list.length >= this.minHits) keep.push(c);
+    }
+    return keep;
+  }
+}

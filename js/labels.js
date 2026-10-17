@@ -46,7 +46,7 @@ export const GROUPS = [
 
   // ── caution ───────────────────────────────────────────────────────────
   { id: 'shout', icon: '🗣️', tier: 'caution', lo: 'ມີຄົນຮ້ອງເອີ້ນ', en: 'Shouting / calling out', classes: [6, 7, 9, 10] },
-  { id: 'dog', icon: '🐕', tier: 'caution', lo: 'ມີໝາເຫົ່າ', en: 'Dog barking', classes: [69, 70, 117], threshold: 0.45 },
+  { id: 'dog', icon: '🐕', tier: 'caution', lo: 'ມີໝາເຫົ່າ', en: 'Dog barking', classes: [69, 70, 117], threshold: 0.6 },
   { id: 'reversing', moving: true, icon: '🚚', tier: 'caution', lo: 'ມີລົດກຳລັງຖອຍຫຼັງ', en: 'Reversing beeps', classes: [313] },
   { id: 'vehicle', moving: true, icon: '🚙', tier: 'caution', lo: 'ມີລົດຢູ່ໃກ້', en: 'Motor vehicle nearby', classes: [294, 300, 301], threshold: 0.6 },
   { id: 'doorbell', icon: '🔔', tier: 'caution', lo: 'ມີຄົນກົດກະດິ່ງປະຕູ', en: 'Doorbell', classes: [349, 350], threshold: 0.35 },
@@ -71,7 +71,7 @@ export const GROUPS = [
   { id: 'music', icon: '🎵', tier: 'info', lo: 'ມີສຽງດົນຕີ', en: 'Music', classes: [132], threshold: 0.6 },
   { id: 'rain', icon: '🌧️', tier: 'info', lo: 'ຝົນຕົກ', en: 'Rain', classes: [283, 284, 285], threshold: 0.5 },
   { id: 'rooster', icon: '🐓', tier: 'info', lo: 'ໄກ່ຂັນ', en: 'Rooster / chicken', classes: [94, 96], threshold: 0.5 },
-  { id: 'cat', icon: '🐈', tier: 'info', lo: 'ມີແມວ', en: 'Cat', classes: [76, 78], threshold: 0.5 },
+  { id: 'cat', icon: '🐈', tier: 'info', lo: 'ມີແມວ', en: 'Cat', classes: [76, 78], threshold: 0.65 },
   { id: 'vendor_jingle', icon: '🛒', tier: 'info', lo: 'ລົດຂາຍເຄື່ອງ (ສຽງເພງ)', en: 'Vendor truck jingle', classes: [314], threshold: 0.4 },
   { id: 'engine_idle', icon: '⚙️', tier: 'info', lo: 'ມີເຄື່ອງຈັກລົດຕິດຢູ່', en: 'Engine starting / idling', classes: [345, 346], threshold: 0.5 },
   { id: 'traffic', icon: '🚦', tier: 'info', lo: 'ສຽງລົດຫຼາຍ (ຖະໜົນ)', en: 'Traffic noise', classes: [321], threshold: 0.6 },
