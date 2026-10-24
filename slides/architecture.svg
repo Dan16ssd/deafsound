@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" font-family="'Noto Sans','Segoe UI',system-ui,sans-serif">
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0" stop-color="#fbfefe"/><stop offset="0.5" stop-color="#f0fafc"/><stop offset="1" stop-color="#e7f6fa"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#11998f"/><stop offset="1" stop-color="#0a7a73"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#104655" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#0a7a73"/>
+    </marker>
+    <marker id="arrowGrey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#7b8b93"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#page)"/>
+
+  <text x="80" y="88" font-size="46" font-weight="800" fill="#14222a">How DeafSound works</text>
+  <text x="80" y="130" font-size="25" fill="#4a5a63">Your phone listens for you, and taps you when something matters.</text>
+
+  <!-- 1. the sound -->
+  <g filter="url(#soft)">
+    <rect x="80" y="300" width="230" height="200" rx="26" fill="#ffffff"/>
+  </g>
+  <g stroke="#0a7a73" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M150 390 a34 34 0 0 1 0 48"/><path d="M134 378 a52 52 0 0 1 0 72"/>
+    <path d="M240 390 a34 34 0 0 0 0 48"/><path d="M256 378 a52 52 0 0 0 0 72"/>
+  </g>
+  <circle cx="195" cy="414" r="21" fill="url(#teal)"/>
+  <text x="195" y="474" font-size="23" font-weight="700" fill="#14222a" text-anchor="middle">A sound happens</text>
+
+  <path d="M320 400 H 392" stroke="#0a7a73" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- 2. the phone: everything inside this box stays on the device -->
+  <rect x="404" y="196" width="800" height="430" rx="34" fill="#ffffff" fill-opacity="0.78" stroke="#0a7a73" stroke-width="3" stroke-dasharray="12 9"/>
+  <rect x="404" y="196" width="310" height="44" rx="22" fill="#0a7a73"/>
+  <text x="432" y="226" font-size="21" font-weight="700" fill="#ffffff">Inside your phone — offline</text>
+
+  <g font-size="22" fill="#14222a">
+    <g filter="url(#soft)"><rect x="444" y="288" width="226" height="250" rx="22" fill="#ffffff"/></g>
+    <text x="557" y="334" font-size="19" font-weight="800" fill="#0a7a73" text-anchor="middle">1 · LISTEN</text>
+    <text x="557" y="382" font-weight="700" text-anchor="middle">The microphone</text>
+    <text x="557" y="412" font-weight="700" text-anchor="middle">is cut into slices,</text>
+    <text x="557" y="442" font-weight="700" text-anchor="middle">10 every second</text>
+    <text x="557" y="492" font-size="19" fill="#4a5a63" text-anchor="middle">No recording is kept</text>
+
+    <g filter="url(#soft)"><rect x="690" y="288" width="226" height="250" rx="22" fill="#ffffff"/></g>
+    <text x="803" y="334" font-size="19" font-weight="800" fill="#0a7a73" text-anchor="middle">2 · RECOGNISE</text>
+    <text x="803" y="382" font-weight="700" text-anchor="middle">Compared against</text>
+    <text x="803" y="412" font-weight="700" text-anchor="middle">40 everyday sounds</text>
+    <text x="803" y="442" font-weight="700" text-anchor="middle">— horn, siren, baby</text>
+    <text x="803" y="492" font-size="19" fill="#4a5a63" text-anchor="middle">Ready-made model</text>
+
+    <g filter="url(#soft)"><rect x="936" y="288" width="226" height="250" rx="22" fill="#ffffff"/></g>
+    <text x="1049" y="334" font-size="19" font-weight="800" fill="#0a7a73" text-anchor="middle">3 · DECIDE</text>
+    <text x="1049" y="382" font-weight="700" text-anchor="middle">How urgent is it?</text>
+    <text x="1049" y="420" font-size="20" font-weight="700" fill="#b3140f" text-anchor="middle">Danger</text>
+    <text x="1049" y="450" font-size="20" font-weight="700" fill="#8a5300" text-anchor="middle">Careful</text>
+    <text x="1049" y="480" font-size="20" font-weight="700" fill="#1f5fbf" text-anchor="middle">Info</text>
+  </g>
+
+  <path d="M676 413 H 684" stroke="#0a7a73" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M922 413 H 930" stroke="#0a7a73" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1212 400 H 1284" stroke="#0a7a73" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- 3. the alert -->
+  <g filter="url(#soft)"><rect x="1296" y="268" width="224" height="290" rx="26" fill="#ffffff"/></g>
+  <rect x="1336" y="300" width="144" height="156" rx="20" fill="#fde3e1"/>
+  <circle cx="1408" cy="356" r="22" fill="#b3140f"/>
+  <g stroke="#b3140f" stroke-width="6" stroke-linecap="round" fill="none">
+    <path d="M1366 338 a28 28 0 0 0 0 36"/><path d="M1450 338 a28 28 0 0 1 0 36"/>
+  </g>
+  <text x="1408" y="412" font-size="19" font-weight="800" fill="#b3140f" text-anchor="middle">ມີສຽງແກລົດ</text>
+  <text x="1408" y="436" font-size="15" fill="#b3140f" text-anchor="middle">Vehicle horn</text>
+  <text x="1408" y="494" font-size="22" font-weight="700" fill="#14222a" text-anchor="middle">You see it</text>
+  <text x="1408" y="524" font-size="22" font-weight="700" fill="#14222a" text-anchor="middle">and feel it buzz</text>
+
+  <!-- timing -->
+  <path d="M195 592 H 1408" stroke="#0a7a73" stroke-width="2.5" stroke-dasharray="7 7" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <rect x="660" y="566" width="290" height="52" rx="26" fill="url(#teal)"/>
+  <text x="805" y="601" font-size="24" font-weight="800" fill="#ffffff" text-anchor="middle">186 ms, start to buzz</text>
+  <text x="805" y="646" font-size="20" fill="#4a5a63" text-anchor="middle">Faster than a person can turn their head</text>
+
+  <!-- the only network call -->
+  <path d="M1049 546 V 706 H 1180" stroke="#7b8b93" stroke-width="3" stroke-dasharray="9 7" fill="none" marker-end="url(#arrowGrey)"/>
+  <g filter="url(#soft)"><rect x="1192" y="662" width="328" height="128" rx="22" fill="#ffffff" fill-opacity="0.85"/></g>
+  <text x="1222" y="700" font-size="19" font-weight="800" fill="#4a5a63">ONLY IF YOU TAP</text>
+  <text x="1222" y="730" font-size="19" fill="#14222a">“What happened?” sends a few</text>
+  <text x="1222" y="756" font-size="19" fill="#14222a">words of text for a plain-language</text>
+  <text x="1222" y="782" font-size="19" fill="#14222a">explanation. Never the audio.</text>
+
+  <!-- the promise -->
+  <rect x="80" y="662" width="1070" height="128" rx="22" fill="#ffffff" fill-opacity="0.6" stroke="#0a7a73" stroke-width="2"/>
+  <text x="116" y="706" font-size="22" font-weight="800" fill="#0a7a73">What this means</text>
+  <text x="116" y="742" font-size="21" fill="#14222a">Your voice and your home never leave your phone. There is no account, no app store and no data plan —</text>
+  <text x="116" y="772" font-size="21" fill="#14222a">one link in a browser. After the first visit it keeps working with the internet switched off.</text>
+</svg>

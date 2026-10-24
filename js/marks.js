@@ -16,7 +16,7 @@
 //   steady  no movement               resolved / all-clear states
 
 const RING_MOTIONS = new Set(['pulse', 'sharp', 'expand', 'soft', 'steady']);
-const BAR_COUNT = 5;
+const BAR_COUNT = 7;
 
 // How many <i> children a motion needs. The core disc and the first ring are
 // pseudo-elements, so a bare <span class="smark smark--pulse"> already renders;
@@ -50,10 +50,16 @@ function baseClass(el) {
   return el.dataset.base;
 }
 
-/** Turn an existing element into (or back into) a sound mark. */
-export function setMark(el, motion = 'expand', { hue, size, label } = {}) {
+/**
+ * Turn an existing element into (or back into) a sound mark.
+ * `travel` animates the one thing the detector knows and the text can only
+ * state: 'approach' swells the mark outward, 'recede' lets it fall away. For
+ * someone who cannot hear the horn change pitch, that movement is the cue.
+ */
+export function setMark(el, motion = 'expand', { hue, size, label, travel } = {}) {
   const m = RING_MOTIONS.has(motion) || motion === 'bars' || motion === 'wave' ? motion : 'expand';
-  el.className = `${baseClass(el)} smark smark--${m}`.trim();
+  const t = travel === 'approach' || travel === 'recede' ? ` smark--${travel}` : '';
+  el.className = `${baseClass(el)} smark smark--${m}${t}`.trim();
   el.replaceChildren(...Array.from({ length: partsFor(m) }, () => document.createElement('i')));
 
   if (hue) el.dataset.hue = hue; else delete el.dataset.hue;
@@ -69,6 +75,27 @@ export function setMark(el, motion = 'expand', { hue, size, label } = {}) {
     el.removeAttribute('aria-label');
   }
   return el;
+}
+
+/**
+ * Fire the one-shot "this just happened" punch. Re-adding the class alone will
+ * not restart a CSS animation, so the layout is flushed in between.
+ */
+export function hitMark(el) {
+  el.classList.remove('hit');
+  void el.offsetWidth;
+  el.classList.add('hit');
+}
+
+/**
+ * Drive a `bars` mark from the live microphone level, so the bars move with
+ * the room instead of looping on a timer. Called once per audio chunk.
+ */
+export function setMarkLevel(el, level) {
+  // The floor matters: a quiet room must still show a clearly moving
+  // equaliser, because "the app is listening" is the thing the screen is
+  // there to say. Only the amplitude above that floor is real signal.
+  el.style.setProperty('--smark-gain', (0.55 + Math.min(1, level * 4) * 0.75).toFixed(3));
 }
 
 /** Clear a mark element back to nothing (idle card, dismissed overlay). */

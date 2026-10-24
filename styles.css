@@ -828,7 +828,11 @@ html[data-contrast="high"] small { color: inherit; opacity: 1; }
 /* ── sizes at the places marks appear ────────────────────────────────────── */
 
 .alert-icon { --smark-size: clamp(3rem, 16vw, 5rem); font-size: 0; min-height: 0; line-height: 0; }
-.alert.tier-idle .alert-icon { display: inline-grid; }
+/* The idle card used to hide its icon entirely; it now carries the drifting
+   wave, or the equaliser while the mic is open. Each mark keeps its own
+   display mode — forcing one here flattens the equaliser into a column. */
+.alert.tier-idle .alert-icon.smark--wave { display: inline-block; }
+.alert.tier-idle .alert-icon.smark--bars { display: inline-flex; }
 .ov-icon { --smark-size: clamp(5rem, 30vw, 9rem); font-size: 0; line-height: 0; }
 .mode-icon { --smark-size: clamp(4.5rem, 26vw, 8rem); font-size: 0; line-height: 0; }
 .guide-pic { --smark-size: clamp(3.5rem, 20vw, 6rem); }
@@ -925,3 +929,68 @@ h2::before { background: linear-gradient(135deg, #2dc4b8, #0a7a73); }
 .mode-btn[data-mode="guardian"] { --tint: 124, 120, 220; }
 /* The demo button was coral; it sits next to the mode tiles, so it joins them. */
 #btn-demo { --tint: 70, 170, 205; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Action animations — motion tied to something that actually happened, not
+   decoration. Each one below is driven by a value the detector already
+   produces, so the screen shows the event rather than describing it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 1. The live room. js/app.js sets --smark-gain from the microphone level on
+      every chunk, so the equaliser rises and falls with real sound. The bars
+      keep their own loop underneath; this scales the whole group. */
+.smark--bars {
+  transform: scaleY(var(--smark-gain, 1));
+  transform-origin: center;
+  transition: transform 90ms linear;
+}
+
+/* 2. Arrival. A sound was just classified: the mark lands. */
+@keyframes smark-hit {
+  0%   { transform: scale(0.55); }
+  55%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+.smark.hit { animation: smark-hit 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) 1; }
+
+/* 3. Travel. The approach detector knows a horn is closing or has gone past;
+      until now that fact only appeared as "↗ Getting closer" in small text.
+      Swelling or falling away says it without reading. */
+@keyframes smark-approach {
+  0%   { transform: scale(0.68); }
+  100% { transform: scale(1.12); }
+}
+@keyframes smark-recede {
+  0%   { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.7); opacity: 0.5; }
+}
+.smark--approach { animation: smark-approach 2.4s cubic-bezier(0.35, 0, 0.6, 1) forwards; }
+.smark--recede { animation: smark-recede 2.4s cubic-bezier(0.3, 0, 0.7, 1) forwards; }
+/* The ripples speed up as the source closes and slow as it leaves. */
+.smark--approach > i { animation-duration: calc(var(--smark-ring) * 0.7); }
+.smark--recede > i { animation-duration: calc(var(--smark-ring) * 1.5); }
+
+/* 4. A row joining the recent list. Only the genuinely new one animates. */
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.events li.is-new { animation: row-in 0.35s ease-out 1; }
+
+/* Reduced motion: keep the information, drop the travel. The arrival punch and
+   the row slide are pure emphasis, so they go; the equaliser keeps following
+   the real level (it is data, not decoration) but without the easing, and a
+   travelling sound holds at its end state so the size still says near or far. */
+@media (prefers-reduced-motion: reduce) {
+  .smark.hit, .events li.is-new { animation: none; }
+  .smark--bars { transition: none; }
+  .smark--approach { animation: none; transform: scale(1.12); }
+  .smark--recede { animation: none; transform: scale(0.7); opacity: 0.5; }
+}
+
+/* The listening equaliser is the hero of the Listen screen, so in the alert
+   slot it spreads into a waveform band rather than sitting as a narrow clump
+   the size of a single icon. */
+.alert-icon.smark--bars { inline-size: calc(var(--smark-size) * 2.4); }
+.smark--bars > i:nth-child(6) { animation-delay: -0.25s; }
+.smark--bars > i:nth-child(7) { animation-delay: -0.7s; }

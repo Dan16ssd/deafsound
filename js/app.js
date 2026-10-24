@@ -1,7 +1,7 @@
 import { MicStream, RingBuffer, rms, SAMPLE_RATE } from './audio.js';
 import { loadYamnet, WINDOW } from './yamnet.js';
 import { TIERS, GROUPS, PERSONAL_MARK } from './labels.js';
-import { soundMark, setMark, clearMark } from './marks.js';
+import { soundMark, setMark, clearMark, hitMark, setMarkLevel } from './marks.js';
 import { LevelTrend, APPROACH } from './approach.js';
 import { BackgroundPool, HEAD, headProb, withHead, addHardNegative } from './head.js';
 import { SceneModel, SCENES, sceneOverrides } from './scene.js';
@@ -89,7 +89,25 @@ let holdTimer = null;
 
 // ── startup ─────────────────────────────────────────────────────────────────
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+// The service worker is what makes the app work offline, and it is also why a
+// fresh deploy can look like "the CSS is gone": the page you are reading was
+// served by the worker that was already installed, so it keeps the previous
+// styles.css until a worker swap. GitHub Pages makes that worse by serving
+// sw.js with a ten-minute CDN cache, so the browser may not even notice a new
+// release for a while. Ask for an update check on every load, and when a new
+// worker actually takes over, reload once so the page is never a build behind.
+// No controller at startup means the next swap is a first install, not an
+// update: nothing stale is on screen, so there is nothing to reload for.
+const hadController = !!navigator.serviceWorker?.controller;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then((reg) => reg.update().catch(() => {})).catch(() => {});
+  let swapping = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swapping || !hadController) return;
+    swapping = true;
+    location.reload();
+  });
+}
 
 function updateNetPill() {
   const pill = $('pill-net');
@@ -214,6 +232,9 @@ function onChunk(chunk, receivedAt) {
   lastChunkAt = receivedAt;
   const level = rms(chunk);
   $('meter-bar').style.width = `${Math.min(100, level * 400)}%`;
+  // The idle mark is the equaliser while the mic is open: drive it from the
+  // real level so the screen shows the room, not a canned loop.
+  if (!shown) setMarkLevel($('alert-icon'), level);
   if (mode === 'finder') finderSample(level);
 
   // Onset detection: a chunk much louder than the recent floor starts a burst
@@ -394,7 +415,9 @@ function showAlert(ev) {
   const card = $('alert');
   card.className = `alert tier-${ev.tier}`;
   restartFlash(card);
-  setMark($('alert-icon'), motion, { hue: ev.hue });
+  const travel = ev.approach ? 'approach' : ev.passed ? 'recede' : undefined;
+  setMark($('alert-icon'), motion, { hue: ev.hue, travel });
+  if (!travel) hitMark($('alert-icon'));
   $('alert-tier').textContent = tierLabel;
   $('alert-text').textContent = lo(ev);
   $('alert-meta').textContent = metaOf(ev, meta);
@@ -409,7 +432,8 @@ function showAlert(ev) {
   if (FULLSCREEN_TIERS.has(ev.tier)) {
     overlay.className = `overlay tier-${ev.tier}`;
     $('ov-tier').textContent = tierLabel;
-    setMark($('ov-icon'), motion, { hue: ev.hue });
+    setMark($('ov-icon'), motion, { hue: ev.hue, travel });
+    if (!travel) hitMark($('ov-icon'));
     $('ov-text').textContent = lo(ev);
     $('ov-meta').textContent = metaOf(ev, meta);
     $('ov-wrong').hidden = !canMarkWrong;
@@ -435,6 +459,7 @@ function showIdle(text, meta) {
   $('overlay').hidden = true;
   $('alert').className = 'alert tier-idle';
   setMark($('alert-icon'), mic ? 'bars' : 'wave');
+  $('alert-icon').style.removeProperty('--smark-gain');
   $('alert-tier').textContent = '';
   $('alert-text').textContent = text ?? (mic ? 'ກຳລັງຟັງ…' : 'ກົດ “ເລີ່ມຟັງ”');
   $('alert-meta').textContent = meta ?? (mic ? 'ບໍ່ມີສຽງທີ່ຕ້ອງລະວັງ · Listening' : 'Tap Start to listen');
@@ -513,11 +538,20 @@ function ago(t) {
   return s < 60 ? `${s} ວິນາທີກ່ອນ` : `${Math.round(s / 60)} ນາທີກ່ອນ`;
 }
 
+// Only the row that was not on screen last time animates in; the list is
+// re-rendered on a timer to refresh the "x seconds ago" labels, and replaying
+// the entry animation every tick would look like new alerts arriving.
+let lastTopEvent = null;
+
 function renderEvents() {
   const ol = $('events');
-  ol.replaceChildren(...log.slice(-20).reverse().map((e) => {
+  const rows = log.slice(-20).reverse();
+  const topId = rows[0] ? (rows[0].id ?? `${rows[0].key}-${rows[0].t}`) : null;
+  const fresh = topId !== null && topId !== lastTopEvent;
+  lastTopEvent = topId;
+  ol.replaceChildren(...rows.map((e, i) => {
     const li = document.createElement('li');
-    li.className = `tier-${e.tier}`;
+    li.className = `tier-${e.tier}${fresh && i === 0 ? ' is-new' : ''}`;
     const left = document.createElement('div');
     const lbl = document.createElement('span');
     lbl.className = 'lbl';
