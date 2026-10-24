@@ -14,7 +14,7 @@ export function saveTimeline(list) {
 
 // Compact record of one alert; never contains audio or embeddings.
 export function toRecord(ev) {
-  return { t: ev.t, key: ev.key, lo: ev.lo, en: ev.en, icon: ev.icon, tier: ev.tier, wrong: !!ev.wrong, approach: !!ev.approach, level: ev.risk?.level };
+  return { t: ev.t, key: ev.key, lo: ev.lo, en: ev.en, mark: ev.mark, hue: ev.hue, tier: ev.tier, wrong: !!ev.wrong, approach: !!ev.approach, level: ev.risk?.level };
 }
 
 export function addRecord(list, ev) {
@@ -35,7 +35,7 @@ export function summarize(list, since = startOfDay(Date.now())) {
     if (r.level === 'critical') s.critical++;
     if (r.approach) s.approaching++;
     s.byHour[new Date(r.t).getHours()]++;
-    const g = by.get(r.key) ?? { lo: r.lo, en: r.en, icon: r.icon, tier: r.tier, count: 0 };
+    const g = by.get(r.key) ?? { lo: r.lo, en: r.en, mark: r.mark, hue: r.hue, tier: r.tier, count: 0 };
     g.count++;
     by.set(r.key, g);
   }

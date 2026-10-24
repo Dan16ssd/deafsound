@@ -6,27 +6,27 @@
 
 export const SCENES = {
   street: {
-    lo: 'ຖະໜົນ', en: 'Street', icon: '🛣️',
+    lo: 'ຖະໜົນ', en: 'Street',
     classes: [294, 300, 301, 302, 308, 310, 320, 321, 347, 315],
     scale: { vehicle: 1.25, traffic: 1.2, motorbike: 1, engine_idle: 1.2 },
   },
   home: {
-    lo: 'ໃນເຮືອນ', en: 'Home / indoors', icon: '🏠',
+    lo: 'ໃນເຮືອນ', en: 'Home / indoors',
     classes: [348, 351, 353, 364, 349, 350, 383, 384, 385],
     scale: { doorbell: 0.85, knock: 0.85, phone: 0.9 },
   },
   crowd: {
-    lo: 'ບ່ອນມີຄົນຫຼາຍ', en: 'Crowd / market', icon: '👥',
+    lo: 'ບ່ອນມີຄົນຫຼາຍ', en: 'Crowd / market',
     classes: [0, 1, 64, 65, 13, 314],
     scale: { shout: 1.15, speech: 1.1, crowd: 1.15 },
   },
   temple: {
-    lo: 'ວັດ', en: 'Temple', icon: '🛕',
+    lo: 'ວັດ', en: 'Temple',
     classes: [159, 163, 172, 195, 196, 200, 27, 28],
     scale: { temple_drum: 1.3, bell: 1.3, chant: 1.3 },
   },
   nature: {
-    lo: 'ທຳມະຊາດ', en: 'Outdoors / nature', icon: '🌳',
+    lo: 'ທຳມະຊາດ', en: 'Outdoors / nature',
     classes: [283, 284, 285, 94, 96, 76, 78, 280, 281],
     scale: { rain: 1.2, rooster: 1.2 },
   },

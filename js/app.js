@@ -1,6 +1,7 @@
 import { MicStream, RingBuffer, rms, SAMPLE_RATE } from './audio.js';
 import { loadYamnet, WINDOW } from './yamnet.js';
-import { TIERS, GROUPS, PERSONAL_ICON } from './labels.js';
+import { TIERS, GROUPS, PERSONAL_MARK } from './labels.js';
+import { soundMark, setMark, clearMark } from './marks.js';
 import { LevelTrend, APPROACH } from './approach.js';
 import { BackgroundPool, HEAD, headProb, withHead, addHardNegative } from './head.js';
 import { SceneModel, SCENES, sceneOverrides } from './scene.js';
@@ -260,7 +261,7 @@ async function infer() {
     if (matcher.sounds.length) {
       const { results } = matcher.match(embedding, liveRms);
       for (const r of results) {
-        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', emb: embedding, icon: PERSONAL_ICON, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
+        if (r.hit) cands.push({ key: `personal:${r.sound.id}`, source: 'personal', emb: embedding, mark: PERSONAL_MARK, tier: r.sound.tier, lo: r.sound.name, en: r.sound.en ?? r.sound.name, confidence: r.sim });
       }
       updateLiveSims(results);
     }
@@ -290,7 +291,7 @@ async function infer() {
 
 function renderScene(id) {
   const sc = SCENES[id];
-  $('scene').textContent = sc ? `${sc.icon} ${sc.lo} · ${sc.en}` : id === 'mixed' ? 'ສຽງປະສົມ · Mixed surroundings' : 'ງຽບ · Quiet surroundings';
+  $('scene').textContent = sc ? `${sc.lo} · ${sc.en}` : id === 'mixed' ? 'ສຽງປະສົມ · Mixed surroundings' : 'ງຽບ · Quiet surroundings';
 }
 
 function handleCandidates(cands, arrivedAt) {
@@ -385,7 +386,7 @@ const metaOf = (ev, meta) => (ev.approach ? `↗ Getting closer · ${meta}` : ev
 
 function showAlert(ev) {
   shown = ev;
-  const icon = ev.icon ?? TIERS[ev.tier].icon;
+  const motion = ev.mark ?? TIERS[ev.tier].mark;
   const tierLabel = `${ev.risk?.level === 'critical' ? '‼ ' : ''}${TIERS[ev.tier].lo}${ev.source === 'personal' ? ' · ສຽງຂອງຂ້ອຍ' : ''}`;
   const meta = `${ev.en} · ${Math.round(ev.confidence * 100)}%`;
   const canMarkWrong = ev.source !== 'test';
@@ -393,7 +394,7 @@ function showAlert(ev) {
   const card = $('alert');
   card.className = `alert tier-${ev.tier}`;
   restartFlash(card);
-  $('alert-icon').textContent = icon;
+  setMark($('alert-icon'), motion, { hue: ev.hue });
   $('alert-tier').textContent = tierLabel;
   $('alert-text').textContent = lo(ev);
   $('alert-meta').textContent = metaOf(ev, meta);
@@ -407,8 +408,8 @@ function showAlert(ev) {
   const overlay = $('overlay');
   if (FULLSCREEN_TIERS.has(ev.tier)) {
     overlay.className = `overlay tier-${ev.tier}`;
-    $('ov-tier').textContent = `${TIERS[ev.tier].icon} ${tierLabel}`;
-    $('ov-icon').textContent = icon;
+    $('ov-tier').textContent = tierLabel;
+    setMark($('ov-icon'), motion, { hue: ev.hue });
     $('ov-text').textContent = lo(ev);
     $('ov-meta').textContent = metaOf(ev, meta);
     $('ov-wrong').hidden = !canMarkWrong;
@@ -433,7 +434,7 @@ function showIdle(text, meta) {
   clearTimeout(holdTimer);
   $('overlay').hidden = true;
   $('alert').className = 'alert tier-idle';
-  $('alert-icon').textContent = '';
+  setMark($('alert-icon'), mic ? 'bars' : 'wave');
   $('alert-tier').textContent = '';
   $('alert-text').textContent = text ?? (mic ? 'ກຳລັງຟັງ…' : 'ກົດ “ເລີ່ມຟັງ”');
   $('alert-meta').textContent = meta ?? (mic ? 'ບໍ່ມີສຽງທີ່ຕ້ອງລະວັງ · Listening' : 'Tap Start to listen');
@@ -521,7 +522,7 @@ function renderEvents() {
     const lbl = document.createElement('span');
     lbl.className = 'lbl';
     lbl.textContent = e.lo + (e.wrong ? ' ✕' : '');
-    left.append(lbl);
+    left.append(soundMark(e.mark ?? TIERS[e.tier].mark, { hue: e.hue }), lbl);
     if (e.source === 'personal') {
       const tag = document.createElement('span');
       tag.className = 'tag-personal';
@@ -616,7 +617,7 @@ $('btn-record').addEventListener('click', async () => {
   if (!mic) { reg.busy = false; renderRegDots(); regStatus('ເປີດໄມໂຄຣໂຟນບໍ່ໄດ້'); return; }
   if (!reg.firstTap) reg.firstTap = performance.now();
 
-  regStatus('🔴 ເຮັດສຽງດຽວນີ້! (2 ວິນາທີ)');
+  regStatus('ເຮັດສຽງດຽວນີ້! (2 ວິນາທີ)');
   const clip = await captureClip();
   regStatus('ກຳລັງວິເຄາະ…');
   const frames = await yam.run(clip);
@@ -841,7 +842,7 @@ function renderThresholds() {
         <input type="range" min="0.10" max="0.95" step="0.01">
         <span class="t-val"></span>
       </div>`;
-    li.querySelector('.t-name').textContent = `${g.icon} ${g.lo}`;
+    li.querySelector('.t-name').replaceChildren(soundMark(g.mark, { hue: g.hue }), document.createTextNode(` ${g.lo}`));
     li.querySelector('.t-tier').textContent = `${g.en} · ${TIERS[g.tier].en} · default ${def.toFixed(2)}`;
     const slider = li.querySelector('input');
     slider.setAttribute('aria-label', `${g.en} threshold`);
@@ -891,7 +892,7 @@ async function renderPack() {
   $('pack-list').replaceChildren(...available.map((p) => {
     const li = document.createElement('li');
     li.innerHTML = '<div class="head"><span class="name"></span><button class="add">ເພີ່ມ</button></div><div class="muted meta"></div>';
-    li.querySelector('.name').textContent = `${PERSONAL_ICON} ${p.name}`;
+    li.querySelector('.name').replaceChildren(soundMark(PERSONAL_MARK), document.createTextNode(` ${p.name}`));
     li.querySelector('.meta').textContent = `${p.en} · ${TIERS[p.tier].lo}`;
     li.querySelector('.add').addEventListener('click', async () => {
       await putSound({
@@ -910,10 +911,10 @@ async function renderPack() {
 // ── first-run visual guide ──────────────────────────────────────────────────
 
 const GUIDE_STEPS = [
-  { pic: '📱👂', text: 'ໂທລະສັບຈະຟັງສຽງອ້ອມຂ້າງແທນທ່ານ' },
-  { pic: '🔴🟡⚪', text: 'ສີ ແລະ ການສັ່ນບອກວ່າສຽງນັ້ນອັນຕະລາຍປານໃດ', feel: true },
-  { pic: '⭐🔔', text: 'ບັນທຶກສຽງຂອງທ່ານເອງ ເຊັ່ນ ກະດິ່ງປະຕູ ຫຼື ສຽງເອີ້ນຊື່' },
-  { pic: '🔆🔒', text: 'ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ · ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ' },
+  { mark: 'bars', text: 'ໂທລະສັບຈະຟັງສຽງອ້ອມຂ້າງແທນທ່ານ' },
+  { mark: 'pulse', text: 'ສີ ແລະ ການສັ່ນບອກວ່າສຽງນັ້ນອັນຕະລາຍປານໃດ', feel: true },
+  { mark: 'sharp', text: 'ບັນທຶກສຽງຂອງທ່ານເອງ ເຊັ່ນ ກະດິ່ງປະຕູ ຫຼື ສຽງເອີ້ນຊື່' },
+  { mark: 'wave', text: 'ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ · ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ' },
 ];
 let guideStep = 0;
 
@@ -932,7 +933,7 @@ function closeGuide() {
 
 function renderGuide() {
   const step = GUIDE_STEPS[guideStep];
-  $('guide-pic').textContent = step.pic;
+  setMark($('guide-pic'), step.mark);
   $('guide-text').textContent = step.text;
   $('guide-dots').replaceChildren(...GUIDE_STEPS.map((_, i) => {
     const d = document.createElement('i');
@@ -942,7 +943,7 @@ function renderGuide() {
   $('guide-extra').replaceChildren(...(step.feel ? ['danger', 'caution', 'info'].map((tier) => {
     const b = document.createElement('button');
     b.className = `btn tier-${tier}`;
-    b.textContent = `${TIERS[tier].icon} ${TIERS[tier].lo} · ສຳຜັດການສັ່ນ`;
+    b.replaceChildren(soundMark(TIERS[tier].mark), document.createTextNode(` ${TIERS[tier].lo} · ສຳຜັດການສັ່ນ`));
     b.addEventListener('click', () => navigator.vibrate?.(TIERS[tier].vibrate));
     return b;
   }) : []));
@@ -991,7 +992,7 @@ function renderToday() {
   const s = summarize(timeline);
   const body = $('today-body');
   if (s.total === 0) { body.textContent = 'ມື້ນີ້ຍັງບໍ່ມີສຽງເຕືອນ · No alerts yet today'; return; }
-  const top = s.top.map((g) => `${g.icon ?? ''} ${g.lo} ×${g.count}`).join('  ·  ');
+  const top = s.top.map((g) => `${g.lo} ×${g.count}`).join('  ·  ');
   body.textContent = `ທັງໝົດ ${s.total} · ອັນຕະລາຍ ${s.danger} · ລະວັງ ${s.caution} · ຂໍ້ມູນ ${s.info}`
     + (s.critical ? ` · ‼ ${s.critical}` : '') + (s.approaching ? ` · ↗ ${s.approaching}` : '') + `\n${top}`;
   body.style.whiteSpace = 'pre-line';
@@ -1102,24 +1103,24 @@ function onAlertInMode(ev) {
 
 const MODE_INFO = {
   crossing: {
-    icon: '🚸', title: 'ຂ້າມຖະໜົນ · Crossing',
+    mark: 'expand', title: 'ຂ້າມຖະໜົນ · Crossing',
     note: 'ຊ່ວຍເສີມເທົ່ານັ້ນ — ຫຼຽວຊ້າຍຂວາສະເໝີ. ງຽບ ≠ ປອດໄພ.\nAssistive only: always look both ways. Quiet does not mean safe.',
   },
   finder: {
-    icon: '🧭', title: 'ຫາທິດທາງສຽງ · Find the sound',
+    mark: 'wave', title: 'ຫາທິດທາງສຽງ · Find the sound',
     note: '1) ໃຫ້ສຽງດັງຢູ່  2) ຖືໂທລະສັບ ແລ້ວຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ  3) ຍ່າງຕາມລູກສອນ\n1) Keep the sound playing  2) Hold the phone and turn slowly all the way round  3) Follow the arrow. Approximate.',
   },
   guardian: {
-    icon: '🌙', title: 'ເຝົ້າກາງຄືນ · Night guardian',
+    mark: 'soft', title: 'ເຝົ້າກາງຄືນ · Night guardian',
     note: 'ເສຍບສາຍສາກ ແລະ ວາງໂທລະສັບໄວ້ໃກ້ໆ. ຕ້ອງເປີດໜ້າຈໍຄ້າງໄວ້.\nPlug in the charger and keep the phone close. The screen must stay on.',
   },
 };
 
 const CROSS_TEXT = {
-  clear: ['✅', 'ບໍ່ໄດ້ຍິນລົດ', 'No vehicle heard'],
-  near: ['👂', 'ມີສຽງລົດ', 'Vehicle sound nearby'],
-  close: ['⚠️', 'ລົດກຳລັງໃກ້', 'A vehicle is getting close'],
-  back: ['⛔', 'ຖອຍຫຼັງ!', 'Step back!'],
+  clear: ['steady', 'ບໍ່ໄດ້ຍິນລົດ', 'No vehicle heard'],
+  near: ['soft', 'ມີສຽງລົດ', 'Vehicle sound nearby'],
+  close: ['expand', 'ລົດກຳລັງໃກ້', 'A vehicle is getting close'],
+  back: ['pulse', 'ຖອຍຫຼັງ!', 'Step back!'],
 };
 
 async function enterMode(name) {
@@ -1132,7 +1133,7 @@ async function enterMode(name) {
   el.className = `mode mode-${name}`;
   el.hidden = false;
   $('mode-title').textContent = info.title;
-  $('mode-icon').textContent = info.icon;
+  setMark($('mode-icon'), info.mark);
   $('mode-note').textContent = info.note;
   $('mode-note').style.whiteSpace = 'pre-line';
   $('mode-sub').textContent = '';
@@ -1177,10 +1178,10 @@ function exitMode() {
     modeTimers.forEach(clearInterval); modeTimers = [];
     guardianEv = null;
     $('mode').classList.add('summary');
-    $('mode-icon').textContent = '☀️';
+    setMark($('mode-icon'), 'steady');
     const h = Math.floor(s.durationMs / 3600000), m = Math.round((s.durationMs % 3600000) / 60000);
     $('mode-status').textContent = s.count ? `ມີ ${s.count} ການແຈ້ງເຕືອນ` : 'ຄືນນີ້ງຽບສະຫງົບ';
-    $('mode-sub').textContent = `${h} ຊມ ${m} ນທ · ${s.count ? s.top.map((g) => `${g.icon ?? ''} ${g.lo} ×${g.count}`).join('  ·  ') : 'No alerts overnight'}`;
+    $('mode-sub').textContent = `${h} ຊມ ${m} ນທ · ${s.count ? s.top.map((g) => `${g.lo} ×${g.count}`).join('  ·  ') : 'No alerts overnight'}`;
     $('mode-note').textContent = '';
     return;
   }
@@ -1192,8 +1193,8 @@ function exitMode() {
 // ── crossing ────────────────────────────────────────────────────────────────
 
 function setCross(state) {
-  const [icon, lo, en] = CROSS_TEXT[state];
-  $('mode-icon').textContent = icon;
+  const [motion, lo, en] = CROSS_TEXT[state];
+  setMark($('mode-icon'), motion);
   $('mode-status').textContent = lo;
   $('mode-sub').textContent = en;
   $('mode').dataset.state = state;
@@ -1287,9 +1288,9 @@ function finderTick() {
       else { finderPhase = 'unclear'; }
     } else {
       $('mode-rescan').hidden = true;
-      if (now - tooFastAt < 1200) { status.textContent = '🐢 ຊ້າລົງ'; sub.textContent = 'Slower: turn gently'; }
-      else if (now - heardAt > 3000 && cover > 3) { status.textContent = '🔇 ບໍ່ໄດ້ຍິນສຽງ'; sub.textContent = 'No sound heard. Keep the sound playing, then turn.'; }
-      else { status.textContent = '🔄 ຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ'; sub.textContent = `Turn slowly all the way round · ${Math.round((cover / 36) * 100)}%`; }
+      if (now - tooFastAt < 1200) { status.textContent = 'ຊ້າລົງ'; sub.textContent = 'Slower: turn gently'; }
+      else if (now - heardAt > 3000 && cover > 3) { status.textContent = 'ບໍ່ໄດ້ຍິນສຽງ'; sub.textContent = 'No sound heard. Keep the sound playing, then turn.'; }
+      else { status.textContent = 'ຫັນຕົວຊ້າໆ ໃຫ້ຄົບຮອບ'; sub.textContent = `Turn slowly all the way round · ${Math.round((cover / 36) * 100)}%`; }
       return;
     }
   }
@@ -1300,7 +1301,7 @@ function finderTick() {
     else if (now - lastGoodAt > 6000) { finderPhase = 'unclear'; }
     if (finderPhase === 'result') {
       $('mode-rescan').hidden = false;
-      status.textContent = '👉 ສຽງຢູ່ທາງນີ້';
+      status.textContent = 'ສຽງຢູ່ທາງນີ້';
       sub.textContent = `Follow the arrow · ±${Math.round(lastGood.width / 2)}° · ${finderTarget ? finderTarget.en : 'any sound'}`;
       const c = closeness(heading, lastGood.heading);
       if (c > 0.7 && now >= nextTick) { navigator.vibrate?.([c > 0.9 ? 90 : 30]); nextTick = now + 650 - 450 * c; }
@@ -1310,7 +1311,7 @@ function finderTick() {
 
   // unclear
   $('mode-rescan').hidden = false;
-  status.textContent = '🌫️ ຍັງບໍ່ຊັດເຈນ';
+  status.textContent = 'ຍັງບໍ່ຊັດເຈນ';
   sub.textContent = 'Could not tell. Move closer to the sound or reduce other noise, then scan again.';
 }
 

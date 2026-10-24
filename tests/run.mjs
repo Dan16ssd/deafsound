@@ -60,11 +60,11 @@ function horn(n, amp) {
 
 // ── label map & alert spec ──────────────────────────────────────────────────
 
-test('label map: valid, unique classes, icon + Lao + English on every group', () => {
+test('label map: valid, unique classes, mark + Lao + English on every group', () => {
   const seen = new Set();
   for (const g of GROUPS) {
     assert.ok(TIERS[g.tier], `${g.id} tier`);
-    assert.ok(g.icon && g.lo && g.en, `${g.id} icon/lo/en`);
+    assert.ok(g.mark && g.lo && g.en, `${g.id} mark/lo/en`);
     assert.match(g.lo, /[຀-໿]/, `${g.id} Lao text`);
     for (const c of g.classes) {
       assert.ok(c >= 0 && c < 521, `${g.id} class ${c}`);
@@ -95,12 +95,12 @@ test('latency budget: ≤100 ms steady hop, ≤40 ms burst hop on onsets, ≤20 
 
 // ── detection ───────────────────────────────────────────────────────────────
 
-test('synthetic horn → danger alert with icon', async () => {
+test('synthetic horn → danger alert with mark', async () => {
   const { scores } = await yam.classify(mix(horn(WINDOW, 0.4), noise(WINDOW, 0.02)));
   const top = rankCandidates(yamnetCandidates(scores))[0];
   assert.equal(top?.group, 'horn');
   assert.equal(top.tier, 'danger');
-  assert.equal(top.icon, '📯');
+  assert.equal(top.mark, 'sharp');
 });
 
 test('field threshold override suppresses a group; suggestion raises above false alarms', async () => {
@@ -224,7 +224,7 @@ test('shipped starter pack file is valid', () => {
 test('narration payload is text only; local summary works offline', () => {
   const now = Date.now();
   const log = [
-    { key: 'yamnet:horn', en: 'Vehicle horn', lo: 'ມີສຽງແກລົດ', tier: 'danger', source: 'yamnet', confidence: 0.71, t: now - 4000, icon: '📯' },
+    { key: 'yamnet:horn', en: 'Vehicle horn', lo: 'ມີສຽງແກລົດ', tier: 'danger', source: 'yamnet', confidence: 0.71, t: now - 4000, mark: 'sharp' },
     { key: 'yamnet:dog', en: 'Dog barking', lo: 'ມີໝາເຫົ່າ', tier: 'caution', source: 'yamnet', confidence: 0.44, t: now - 20000 },
   ];
   const payload = toPayload(recentEvents(log, now), now);
@@ -450,7 +450,7 @@ test('outputs: flash schedule follows the vibration pattern; band level by tier/
 test('timeline: compact records, cap, daily summary ignores wrong alerts and other days', () => {
   const now = new Date(); now.setHours(12, 0, 0, 0);
   const t0 = now.getTime();
-  const ev = (o) => ({ t: t0, key: 'yamnet:horn', lo: 'ມີສຽງແກລົດ', en: 'Horn', icon: '📯', tier: 'danger', emb: new Float32Array(1024), ...o });
+  const ev = (o) => ({ t: t0, key: 'yamnet:horn', lo: 'ມີສຽງແກລົດ', en: 'Horn', mark: 'sharp', tier: 'danger', emb: new Float32Array(1024), ...o });
   const list = [];
   addRecord(list, ev({}));
   addRecord(list, ev({ approach: true, risk: { level: 'critical' } }));

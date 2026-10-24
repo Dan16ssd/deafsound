@@ -294,43 +294,58 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
    explicit hover / active / focus-visible / disabled states.
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Noto Sans and Noto Sans Lao are drawn as one family, so Lao and Latin sit on
+   the same baseline at the same weight — the app mixes them in nearly every
+   line. Both are bundled rather than linked: the app has to render in airplane
+   mode, and a phone without a Lao font would otherwise show the alert text as
+   empty boxes. Each file is the Google subset (latin / lao only). */
 @font-face {
-  font-family: "Plus Jakarta Sans"; font-style: normal; font-weight: 400 800; font-display: swap;
-  src: url("fonts/plus-jakarta-sans-latin.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212;
+  font-family: "Noto Sans"; font-style: normal; font-weight: 400 800; font-stretch: 100%; font-display: swap;
+  src: url("fonts/noto-sans-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Noto Sans Lao"; font-style: normal; font-weight: 400 800; font-stretch: 100%; font-display: swap;
+  src: url("fonts/noto-sans-lao.woff2") format("woff2");
+  unicode-range: U+0E81-0EDF, U+200C-200D, U+25CC;
 }
 
 :root {
-  --lao: "Plus Jakarta Sans", "Noto Sans Lao", "Noto Sans Lao UI", "Phetsarath OT", "Saysettha OT", "Lao UI", system-ui, sans-serif;
+  --lao: "Noto Sans", "Noto Sans Lao", "Noto Sans Lao UI", "Phetsarath OT", "Saysettha OT", "Lao UI", system-ui, sans-serif;
 
-  --accent: #1856ff;
+  --accent: #0b857d;                        /* teal; 5:1 on white, so labels pass AA */
   --accent-text: #ffffff;
-  --text: #141414;
-  --muted: #4a5060;
+  --text: #14222a;
+  --muted: #4a5a63;
 
-  --g-base: linear-gradient(165deg, #fff4ec 0%, #f6efff 48%, #e8f8f1 100%);
-  --g-glow-1: rgba(255, 138, 76, 0.34);     /* coral / amber */
-  --g-glow-2: rgba(168, 85, 247, 0.26);     /* violet */
-  --g-glow-3: rgba(7, 202, 107, 0.26);      /* mint */
-  --g-glow-4: rgba(24, 86, 255, 0.2);       /* blue, one light of four */
-  --g-fallback: #f6efff;
+  /* The page is near-white with a single cool wash, so the coloured alert
+     states (red / blue / violet) are the only strong colour on screen. */
+  --g-base: linear-gradient(170deg, #fbfefe 0%, #f0fafc 46%, #e7f6fa 100%);
+  --g-glow-1: rgba(18, 181, 168, 0.18);     /* teal */
+  --g-glow-2: rgba(86, 178, 222, 0.16);     /* sky */
+  --g-glow-3: rgba(18, 181, 168, 0.13);     /* teal, lower */
+  --g-glow-4: rgba(120, 196, 232, 0.14);    /* pale cyan */
+  --g-fallback: #f0fafc;
   --go: #07ca6b;                            /* "start / safe" */
   --go-text: #04210f;
   --stop-text: #ffffff;
 
-  --g-glass: rgba(255, 255, 255, 0.56);     /* hero / chrome */
-  --g-panel: rgba(255, 255, 255, 0.82);     /* content */
-  --g-field: rgba(255, 255, 255, 0.95);
+  --g-glass: rgba(255, 255, 255, 0.78);     /* hero / chrome — the mockup's white bars */
+  --g-panel: rgba(255, 255, 255, 0.92);     /* content cards */
+  --g-field: rgba(255, 255, 255, 0.98);
   --g-hi: rgba(255, 255, 255, 0.95);        /* luminous edge, lit side */
-  --g-lo: rgba(24, 86, 255, 0.22);          /* luminous edge, shade side */
-  --g-line: rgba(20, 30, 70, 0.12);
-  --g-shadow: 0 10px 30px -8px rgba(30, 50, 120, 0.28), 0 2px 6px rgba(30, 50, 120, 0.08);
-  --g-inset: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(24, 86, 255, 0.06);
+  --g-lo: rgba(12, 120, 130, 0.18);         /* luminous edge, shade side */
+  --g-line: rgba(16, 70, 80, 0.12);
+  --g-shadow: 0 10px 28px -10px rgba(16, 70, 85, 0.22), 0 2px 6px rgba(16, 70, 85, 0.06);
+  --g-inset: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(12, 120, 130, 0.05);
   --g-ring: 0 0 0 2px #fff, 0 0 0 5px var(--accent);
 
-  --g-danger: rgba(255, 232, 230, 0.92);
-  --g-warning: rgba(255, 241, 208, 0.94);
-  --g-info: rgba(236, 241, 250, 0.9);
+  /* On a near-white page the alert wash has to carry further, so these are a
+     shade stronger than the surrounding chrome: the colour of the whole screen
+     is the first thing a deaf user reads. */
+  --g-danger: rgba(255, 223, 220, 0.97);
+  --g-warning: rgba(255, 238, 199, 0.97);
+  --g-info: rgba(230, 243, 250, 0.94);
   --g-ok: rgba(216, 246, 226, 0.94);
   --text-ok: #0b5d2a;
   --glow-danger: rgba(234, 33, 67, 0.35);
@@ -340,32 +355,32 @@ h2 { font-size: 1.05rem; margin: 22px 0 8px; }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --accent: #86a8ff;
-    --accent-text: #0a1230;
-    --text: #f1f4ff;
-    --muted: #bcc4d9;
+    --accent: #5fd6cc;
+    --accent-text: #04221f;
+    --text: #eef7f9;
+    --muted: #a9bec5;
 
-    --g-base: linear-gradient(165deg, #140c1e 0%, #1a1030 50%, #0c1a1a 100%);
-    --g-glow-1: rgba(255, 120, 60, 0.3);
-    --g-glow-2: rgba(214, 48, 127, 0.36);
-    --g-glow-3: rgba(7, 202, 107, 0.24);
-    --g-glow-4: rgba(24, 86, 255, 0.38);
+    --g-base: linear-gradient(170deg, #061419 0%, #07202a 52%, #05171c 100%);
+    --g-glow-1: rgba(18, 181, 168, 0.3);
+    --g-glow-2: rgba(70, 150, 200, 0.26);
+    --g-glow-3: rgba(18, 181, 168, 0.2);
+    --g-glow-4: rgba(40, 120, 160, 0.3);
     --stop-text: #2a0705;
-    --g-fallback: #1a1030;
+    --g-fallback: #07202a;
 
-    --g-glass: rgba(34, 26, 54, 0.66);
-    --g-panel: rgba(30, 23, 46, 0.82);
-    --g-field: rgba(12, 8, 22, 0.7);
-    --g-hi: rgba(255, 255, 255, 0.28);
-    --g-lo: rgba(134, 168, 255, 0.2);
+    --g-glass: rgba(14, 40, 50, 0.7);
+    --g-panel: rgba(12, 35, 44, 0.86);
+    --g-field: rgba(4, 18, 24, 0.72);
+    --g-hi: rgba(255, 255, 255, 0.22);
+    --g-lo: rgba(95, 214, 204, 0.2);
     --g-line: rgba(255, 255, 255, 0.12);
     --g-shadow: 0 12px 34px -8px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
     --g-inset: inset 0 1px 0 rgba(255, 255, 255, 0.16), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
-    --g-ring: 0 0 0 2px #060a17, 0 0 0 5px var(--accent);
+    --g-ring: 0 0 0 2px #04141a, 0 0 0 5px var(--accent);
 
     --g-danger: rgba(62, 14, 14, 0.9);
     --g-warning: rgba(54, 38, 8, 0.9);
-    --g-info: rgba(26, 34, 56, 0.86);
+    --g-info: rgba(16, 40, 50, 0.88);
     --g-ok: rgba(8, 52, 30, 0.9);
     --text-ok: #7be0a0;
     --glow-danger: rgba(255, 107, 99, 0.35);
@@ -656,3 +671,257 @@ html[data-contrast="high"] .mode-crossing[data-state="close"] { background: var(
 html[data-contrast="high"] .mode-crossing[data-state="back"] { background: var(--g-danger); box-shadow: inset 0 0 0 16px var(--text-danger); }
 html[data-contrast="high"] .actions-bar { background: var(--g-panel); border-top: 2px solid var(--g-line); border-bottom: 2px solid var(--g-line); margin-left: -16px; margin-right: -16px; padding: 8px 16px; }
 html[data-contrast="high"] small { color: inherit; opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Sound marks — the app's iconography, drawn and animated in CSS.
+   Built by js/marks.js. A mark is a core disc with arcs radiating from it; the
+   motion carries the meaning (sharp burst = horn, slow swell = baby), so the
+   same shape works for every sound and nothing depends on an emoji font.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.smark {
+  --smark-size: 1em;
+  --smark-ring: 1.6s;        /* one ripple */
+  --smark-stroke: 0.075;     /* arc weight, as a fraction of the size */
+  --smark-fade: 0.9;         /* peak arc opacity */
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: var(--smark-size);
+  block-size: var(--smark-size);
+  vertical-align: -0.2em;
+  color: var(--mark-hue, var(--mark-tier, currentColor));
+}
+.smark--none { display: none; }
+
+/* Core disc and its halo. These two make a mark on their own, so plain markup
+   (<span class="smark smark--soft"></span>) already renders something. */
+.smark::before,
+.smark::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+}
+.smark::before {
+  inline-size: 40%;
+  block-size: 40%;
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, currentColor 30%, #fff) 0%, currentColor 72%);
+  box-shadow: 0 0 calc(var(--smark-size) * 0.2) color-mix(in srgb, currentColor 50%, transparent);
+  animation: smark-core var(--smark-ring) ease-in-out infinite;
+}
+.smark::after {
+  inline-size: 70%;
+  block-size: 70%;
+  background: radial-gradient(circle, color-mix(in srgb, currentColor 32%, transparent) 0%, transparent 68%);
+  animation: smark-halo var(--smark-ring) ease-in-out infinite;
+}
+
+/* A circle with only its left and right borders painted reads as ( ) — two
+   arcs from one element, which is what the ripples are made of. */
+.smark > i {
+  position: absolute;
+  inline-size: 100%;
+  block-size: 100%;
+  border: calc(var(--smark-size) * var(--smark-stroke)) solid transparent;
+  border-inline-color: currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  animation: smark-ring var(--smark-ring) ease-out infinite;
+}
+.smark > i:nth-child(2) { animation-delay: calc(var(--smark-ring) / -2); }
+
+@keyframes smark-ring {
+  0%   { opacity: 0; transform: scale(0.5); }
+  18%  { opacity: var(--smark-fade); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+@keyframes smark-core { 0%, 100% { transform: scale(0.92); } 45% { transform: scale(1.1); } }
+@keyframes smark-halo { 0%, 100% { opacity: 0.5; transform: scale(0.9); } 45% { opacity: 1; transform: scale(1.05); } }
+
+/* ── motions ─────────────────────────────────────────────────────────────── */
+
+/* Danger that is close and physical: engines, crashes, thunder. */
+.smark--pulse { --smark-ring: 0.85s; --smark-stroke: 0.09; --smark-fade: 1; }
+
+/* Something calling for attention in short bursts: horns, sirens, alarms. */
+.smark--sharp { --smark-ring: 0.5s; --smark-stroke: 0.085; --smark-fade: 1; }
+.smark--sharp > i { animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+
+/* Travelling outward: a knock, a door, a voice, an animal. */
+.smark--expand { --smark-ring: 1.6s; }
+
+/* Slow and gentle: a baby, speech, music, rain. */
+.smark--soft { --smark-ring: 2.8s; --smark-stroke: 0.06; --smark-fade: 0.6; }
+
+/* Resolved — all clear, night-guard summary. Present but not moving. */
+.smark--steady::before,
+.smark--steady::after,
+.smark--steady > i { animation: none; }
+.smark--steady > i { opacity: 0.45; }
+.smark--steady > i:nth-child(2) { transform: scale(0.72); opacity: 0.7; }
+
+/* Live microphone, and the user's own recorded sounds. */
+.smark--bars {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--smark-size) * 0.075);
+}
+.smark--bars::before, .smark--bars::after { content: none; }
+.smark--bars > i {
+  position: static;
+  inline-size: calc(var(--smark-size) * 0.1);
+  block-size: 100%;
+  border: 0;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 1;
+  animation: smark-bar 1s ease-in-out infinite;
+}
+.smark--bars > i:nth-child(1) { animation-delay: -0.8s; }
+.smark--bars > i:nth-child(2) { animation-delay: -0.35s; }
+.smark--bars > i:nth-child(3) { animation-delay: -0.6s; }
+.smark--bars > i:nth-child(4) { animation-delay: -0.1s; }
+.smark--bars > i:nth-child(5) { animation-delay: -0.5s; }
+@keyframes smark-bar { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+
+/* Idle: a waveform drifting past, so the screen shows the app is awake and
+   listening for anything rather than announcing one sound. */
+.smark--wave {
+  --smark-wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='40' viewBox='0 0 120 40'%3E%3Cpath d='M0 20 Q15 3 30 20 T60 20 T90 20 T120 20' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  inline-size: calc(var(--smark-size) * 3);
+  background: currentColor;
+  -webkit-mask: var(--smark-wave) repeat-x center / auto 100%;
+  mask: var(--smark-wave) repeat-x center / auto 100%;
+  animation: smark-drift 3.2s linear infinite;
+}
+.smark--wave::before, .smark--wave::after { content: none; }
+@keyframes smark-drift {
+  from { -webkit-mask-position: 0 center; mask-position: 0 center; }
+  to   { -webkit-mask-position: calc(var(--smark-size) * 3) center; mask-position: calc(var(--smark-size) * 3) center; }
+}
+
+/* ── colour ──────────────────────────────────────────────────────────────── */
+
+/* Tier drives the colour by default, so the red/amber/neutral safety code the
+   rest of the app uses still holds. A group may override it with data-hue, but
+   never on a danger sound. */
+.alert.tier-danger, .overlay.tier-danger, .events li.tier-danger, .guide-extra .tier-danger { --mark-tier: var(--text-danger); }
+.alert.tier-caution, .overlay.tier-caution, .events li.tier-caution, .guide-extra .tier-caution { --mark-tier: var(--text-warning); }
+.alert.tier-info, .overlay.tier-info, .guide-extra .tier-info { --mark-tier: var(--accent); }
+.alert.tier-idle { --mark-tier: #12b5a8; }
+
+.smark[data-hue="blue"]   { --mark-hue: #1f7ae0; }
+.smark[data-hue="purple"] { --mark-hue: #7c4dff; }
+.smark[data-hue="orange"] { --mark-hue: #e8762a; }
+.smark[data-hue="green"]  { --mark-hue: var(--go, #07ca6b); }
+.smark[data-hue="teal"]   { --mark-hue: #12b5a8; }
+@media (prefers-color-scheme: dark) {
+  .smark[data-hue="blue"]   { --mark-hue: #6fb3ff; }
+  .smark[data-hue="purple"] { --mark-hue: #b9a4ff; }
+  .smark[data-hue="orange"] { --mark-hue: #ffa96b; }
+  .smark[data-hue="teal"]   { --mark-hue: #4fd8cc; }
+  .alert.tier-idle { --mark-tier: #4fd8cc; }
+}
+
+/* ── sizes at the places marks appear ────────────────────────────────────── */
+
+.alert-icon { --smark-size: clamp(3rem, 16vw, 5rem); font-size: 0; min-height: 0; line-height: 0; }
+.alert.tier-idle .alert-icon { display: inline-grid; }
+.ov-icon { --smark-size: clamp(5rem, 30vw, 9rem); font-size: 0; line-height: 0; }
+.mode-icon { --smark-size: clamp(4.5rem, 26vw, 8rem); font-size: 0; line-height: 0; }
+.guide-pic { --smark-size: clamp(3.5rem, 20vw, 6rem); }
+.mode-btn .smark, .events .smark, .t-name .smark, .guide-extra .smark { --smark-size: 1.4em; }
+.banner .smark { --smark-size: 1.2em; }
+
+/* ── motion and contrast preferences ─────────────────────────────────────── */
+
+/* Reduced motion must not mean "no icon": the mark still has to be visible and
+   still has to tell danger from info, it just holds still. */
+@media (prefers-reduced-motion: reduce) {
+  .smark::before, .smark::after, .smark > i, .smark--wave { animation: none; }
+  .smark > i { opacity: 0.5; }
+  .smark > i:nth-child(2) { transform: scale(0.72); opacity: 0.75; }
+  .smark--bars > i { transform: scaleY(0.7); opacity: 1; }
+  .smark--bars > i:nth-child(2) { transform: scaleY(1); }
+  .smark--bars > i:nth-child(4) { transform: scaleY(0.45); }
+}
+
+@media (forced-colors: active) {
+  .smark { color: CanvasText; forced-color-adjust: none; }
+  .smark::before, .smark--bars > i { background: CanvasText; }
+  .smark > i { border-inline-color: CanvasText; opacity: 1; }
+  .smark::after { display: none; }
+}
+
+html[data-contrast="high"] .smark { --smark-stroke: 0.11; --smark-fade: 1; }
+html[data-contrast="high"] .smark::after { display: none; }
+
+/* Chrome and navigation marks follow the accent, not the label colour, so they
+   read as the app's own iconography rather than as part of the sentence. */
+.mode-btn .smark, #btn-demo .smark, #btn-preset-name .smark, .banner .smark, .guide-pic { --mark-tier: var(--accent); }
+.t-name .smark { --mark-tier: var(--muted); }
+/* The mode buttons already draw a tinted 54px tile behind their icon, so the
+   mark fills that tile rather than sizing itself. */
+.mode-btn .smark { --smark-size: 54px; }
+/* .mode-btn span already sets display:grid for the old emoji tile, which would
+   stack the equaliser bars vertically; the flex row has to win here. */
+.mode-btn .smark--bars { display: inline-flex; padding: 12px 0; }
+
+/* The thresholds screen lists all 40 groups at once. Forty looping animations
+   would cost battery on a phone that is also running the model, and the list is
+   for tuning, not for alerting — so these marks hold still. */
+.t-name .smark::before, .t-name .smark::after, .t-name .smark > i { animation: none; }
+.t-name .smark > i { opacity: 0.45; }
+.t-name .smark > i:nth-child(2) { transform: scale(0.72); opacity: 0.7; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Mockup palette: a near-white page washed with cyan, teal chrome, and colour
+   reserved for the alert states. The page tokens are set further up; this block
+   is the handful of components that were still wearing the old orange/violet.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* The start button is teal like the mockup, but a step deeper so white text
+     clears WCAG AA (≈4.9:1) — the one control a user must find in a hurry. */
+  --start: #0a7a73;
+  --start-hi: #11998f;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --start: #0e8b82; --start-hi: #17b3a7; }
+}
+
+.btn-primary {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(180deg, var(--start-hi), var(--start));
+  box-shadow: 0 8px 22px -6px rgba(10, 122, 115, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+html[data-contrast="high"] .btn-primary { background: var(--start); color: #fff; }
+
+/* Section-heading dot and the level meter followed the old coral→pink ramp. */
+h2::before { background: linear-gradient(135deg, #2dc4b8, #0a7a73); }
+#meter-bar { background: linear-gradient(90deg, #12b5a8, #f5c518 60%, #ff5a4f); }
+
+/* The idle hero: the mockup's pale cyan field behind the drifting waveform. */
+.alert.tier-idle {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(18, 181, 168, 0.14) 0%, transparent 70%),
+    var(--g-glass);
+}
+@media (prefers-color-scheme: dark) {
+  .alert.tier-idle {
+    background:
+      radial-gradient(120% 90% at 50% 0%, rgba(18, 181, 168, 0.2) 0%, transparent 70%),
+      var(--g-glass);
+  }
+}
+
+/* The special-mode tints were coral/violet; the mockup keeps them in the same
+   cool family so only an actual alert introduces a warm colour. */
+.mode-btn[data-mode="crossing"] { --tint: 18, 181, 168; }
+.mode-btn[data-mode="finder"] { --tint: 56, 150, 210; }
+.mode-btn[data-mode="guardian"] { --tint: 124, 120, 220; }
+/* The demo button was coral; it sits next to the mode tiles, so it joins them. */
+#btn-demo { --tint: 70, 170, 205; }

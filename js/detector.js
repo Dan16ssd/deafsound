@@ -16,7 +16,7 @@ export function yamnetCandidates(scores, sensitivity = 1, overrides = {}) {
     for (const c of g.classes) if (scores[c] > conf) conf = scores[c];
     const threshold = Math.min(0.95, (overrides[g.id] ?? defaultThreshold(g)) / sensitivity);
     if (conf >= threshold) {
-      out.push({ key: `yamnet:${g.id}`, source: 'yamnet', group: g.id, icon: g.icon, tier: g.tier, lo: g.lo, en: g.en, confidence: conf });
+      out.push({ key: `yamnet:${g.id}`, source: 'yamnet', group: g.id, mark: g.mark, hue: g.hue, tier: g.tier, lo: g.lo, en: g.en, confidence: conf });
     }
   }
   return out;

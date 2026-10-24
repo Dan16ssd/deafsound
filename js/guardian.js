@@ -27,12 +27,12 @@ export function guardianFilter(cands) {
 export class NightSession {
   constructor(now) { this.start = now; this.events = []; }
 
-  record(ev) { this.events.push({ t: ev.t, key: ev.key, lo: ev.lo, en: ev.en, icon: ev.icon, tier: ev.tier }); }
+  record(ev) { this.events.push({ t: ev.t, key: ev.key, lo: ev.lo, en: ev.en, mark: ev.mark, hue: ev.hue, tier: ev.tier }); }
 
   summary(now) {
     const by = new Map();
     for (const e of this.events) {
-      const g = by.get(e.key) ?? { lo: e.lo, en: e.en, icon: e.icon, tier: e.tier, count: 0, last: e.t };
+      const g = by.get(e.key) ?? { lo: e.lo, en: e.en, mark: e.mark, hue: e.hue, tier: e.tier, count: 0, last: e.t };
       g.count++; g.last = e.t;
       by.set(e.key, g);
     }

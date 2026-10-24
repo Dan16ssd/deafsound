@@ -35,11 +35,11 @@ so later launches work in airplane mode. "Add to Home screen" makes it installab
 mic (getUserMedia, browser DSP off) → AudioWorklet (20 ms chunks) → 16 kHz ring buffer
   every 100 ms, or every 40 ms for 0.6 s after a sudden loud onset
   → YAMNet (tf.js WebGL, ~25 ms) on the last 0.975 s
-    ├─ 521 class scores → label map (js/labels.js) → Lao phrase + icon + tier (+ field-tuned thresholds)
+    ├─ 521 class scores → label map (js/labels.js) → Lao phrase + sound mark + tier (+ field-tuned thresholds)
     └─ 1024-d embedding → cosine vs personal library + starter pack sounds (IndexedDB)
   → rank (danger > caution > info, personal wins ties) → cooldown
   → INSTANT: navigator.vibrate(pattern per tier)
-             + danger / caution: full-screen overlay (icon, Lao text, Got it / Wrong)
+             + danger / caution: full-screen overlay (sound mark, Lao text, Got it / Wrong)
              + info: alert card only
   → ON TAP: last 60 s of events as JSON text → LLM → one Lao sentence
 ```
@@ -48,7 +48,8 @@ mic (getUserMedia, browser DSP off) → AudioWorklet (20 ms chunks) → 16 kHz r
 |---|---|
 | `js/audio.js`, `js/capture-worklet.js` | Mic capture, resampling, ring buffer |
 | `js/yamnet.js` | Model load + inference (model files served locally from `model/`) |
-| `js/labels.js` | **Label map**: 40 groups over 88 YAMNet classes → Lao + icon + tier + threshold; vibration patterns |
+| `js/labels.js` | **Label map**: 40 groups over 88 YAMNet classes → Lao + sound mark + tier + threshold; vibration patterns |
+| `js/marks.js` | **Sound marks**: the CSS-drawn, animated icon set that replaced every emoji; motion (pulse/sharp/expand/soft/bars/wave) carries the meaning |
 | `js/detector.js` | Thresholds (with field overrides), ranking, cooldown, threshold suggestions |
 | `js/library.js` | Personal sounds: 3 clips → averaged embedding → cosine matching, IndexedDB |
 | `js/narrate.js` | The only networked code. Falls back to a local summary when off, offline or failing |
@@ -158,10 +159,10 @@ Not built from the plan: a second pretrained ensemble model (needs a model downl
 
 ### Glass look
 
-`styles.css` ends with a liquid-glass layer over a four-light gradient mesh (coral, violet, mint, blue), applied selectively: glass on the top bar, tab bar, live alert, full-screen alerts/modes and
-the mode tiles, with luminous gradient edges over a three-light gradient mesh. Dense content (lists, settings, forms) sits on calmer,
-mostly opaque panels so text keeps contrast. Blue #1856FF is the interactive accent; Start is green, Stop red, and each mode tile has its own tint (green / orange / violet). Plus Jakarta Sans (self-hosted in `fonts/`, Latin only) leads the font
-stack and Lao falls through to the Noto Sans Lao stack. Hover only applies on pointer devices; focus-visible, active and disabled states
+`styles.css` ends with a liquid-glass layer over a four-light gradient mesh (all teal / cyan), applied selectively: glass on the top bar, tab bar, live alert, full-screen alerts/modes and
+the mode tiles, with luminous gradient edges. The page itself is near-white (`#fbfefe → #e7f6fa`) so the alert washes are the only strong colour on screen. Dense content (lists, settings, forms) sits on calmer,
+mostly opaque panels so text keeps contrast. Teal #0B857D is the interactive accent; Start is a deeper teal (white label at ≈4.9:1), Stop red, and each mode tile has its own cool tint (teal / sky / periwinkle). Noto Sans and Noto Sans Lao are both
+self-hosted in `fonts/` (latin and lao subsets, ~57 KB together) so Lao renders offline on a phone with no Lao font installed and sits on the same baseline as the Latin. Hover only applies on pointer devices; focus-visible, active and disabled states
 are explicit. It falls back to solid surfaces without `backdrop-filter`, and under `prefers-contrast: more` or
 `prefers-reduced-transparency`. Alert tiers keep their AA text colours (≥ 5.2:1).
 
@@ -246,13 +247,13 @@ Settings → **ສະຖິຕິ / Metrics** (stored on-device, "Copy JSON" to 
 
 ## Verified during build
 
-- `npm test` (14 tests, real model on CPU): label map, spec vibration patterns, latency constants, horn → danger with icon,
+- `npm test` (14 tests, real model on CPU): label map, spec vibration patterns, latency constants, horn → danger with sound mark,
   threshold overrides and suggestions, cooldown, personal matching (doorbell yes; other chimes, horn and ambient no),
   WAV reading, pack builder, proxy sanitizer, dev-server allowlist.
 - Chrome (WebGL, desktop), synthetic horn fed through the real capture pipeline, 12 trials, **true sound onset →
   `vibrate()`**: median 186 ms, 90th percentile 218 ms, max 253 ms, 9 of 12 within 200 ms, no misses. Inference 21–32 ms.
   Before the onset burst and 20 ms chunks: median 238 ms, max 310 ms.
-- Chrome: full-screen overlay (icon, Lao text, focus on "Got it"), first-run guide, screen-on warning when the wake lock is
+- Chrome: full-screen overlay (sound mark, Lao text, focus on "Got it"), first-run guide, screen-on warning when the wake lock is
   refused, false alarm → threshold suggestion → apply, starter pack add and remove.
 - WCAG contrast computed for every text/background pair in both themes; three failures fixed.
 - **Not yet verified:** a real phone mic and its capture latency, real street sounds, real vibration hardware, a live

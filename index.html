@@ -22,7 +22,7 @@
     <!-- ───────────── Listen ───────────── -->
     <section id="view-listen" class="view">
       <div id="alert" class="alert tier-idle" role="status" aria-live="polite">
-        <div id="alert-icon" class="alert-icon" aria-hidden="true"></div>
+        <div id="alert-icon" class="alert-icon smark smark--wave" aria-hidden="true"></div>
         <div id="alert-tier" class="alert-tier"></div>
         <div id="alert-text" class="alert-text">ກົດ “ເລີ່ມຟັງ”</div>
         <div id="alert-meta" class="alert-meta">Tap Start to listen</div>
@@ -33,7 +33,8 @@
       <div class="meter" aria-hidden="true"><div id="meter-bar"></div></div>
 
       <div id="screen-warn" class="banner" role="status" hidden>
-        🔆 ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ <small id="screen-warn-detail">Keep the screen on while listening</small>
+        <span class="smark smark--steady" aria-hidden="true"><i></i><i></i></span>
+        ເປີດໜ້າຈໍໄວ້ຂະນະຟັງ <small id="screen-warn-detail">Keep the screen on while listening</small>
       </div>
 
       <div class="row actions-bar">
@@ -48,12 +49,12 @@
 
       <h2>ໂໝດພິເສດ <small>Special modes</small></h2>
       <div class="modes">
-        <button class="mode-btn" data-mode="crossing"><span aria-hidden="true">🚸</span><b>ຂ້າມຖະໜົນ</b><small>Crossing</small></button>
-        <button class="mode-btn" data-mode="finder"><span aria-hidden="true">🧭</span><b>ຫາທິດສຽງ</b><small>Find sound</small></button>
-        <button class="mode-btn" data-mode="guardian"><span aria-hidden="true">🌙</span><b>ເຝົ້າກາງຄືນ</b><small>Night guard</small></button>
+        <button class="mode-btn" data-mode="crossing"><span class="smark smark--expand" aria-hidden="true"><i></i><i></i></span><b>ຂ້າມຖະໜົນ</b><small>Crossing</small></button>
+        <button class="mode-btn" data-mode="finder"><span class="smark smark--bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><b>ຫາທິດສຽງ</b><small>Find sound</small></button>
+        <button class="mode-btn" data-mode="guardian"><span class="smark smark--soft" aria-hidden="true"><i></i><i></i></span><b>ເຝົ້າກາງຄືນ</b><small>Night guard</small></button>
       </div>
 
-      <button id="btn-demo" class="btn btn-wide">▶ ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small></button>
+      <button id="btn-demo" class="btn btn-wide"><span class="smark smark--sharp" aria-hidden="true"><i></i><i></i></span> ທົດລອງ: ລົດແກເຂົ້າມາໃກ້ ແລ້ວຜ່ານໄປ <small>Demo: a horn approaches, then passes</small></button>
 
       <h2>ສຽງທີ່ຜ່ານມາ <small>Recent</small></h2>
       <ol id="events" class="events"></ol>
@@ -85,7 +86,7 @@
       </div>
 
       <h2>ເພີ່ມສຽງຂອງຂ້ອຍ <small>Register a sound</small></h2>
-      <button id="btn-preset-name" class="btn btn-wide">📣 ສຽງຄົນເອີ້ນຊື່ຂ້ອຍ <small>Someone calls my name</small></button>
+      <button id="btn-preset-name" class="btn btn-wide"><span class="smark smark--sharp" aria-hidden="true"><i></i><i></i></span> ສຽງຄົນເອີ້ນຊື່ຂ້ອຍ <small>Someone calls my name</small></button>
       <div class="card">
         <label class="field">
           <span>ຊື່ສຽງ <small>Name</small></span>
@@ -175,7 +176,7 @@
         </div>
       </div>
 
-      <p class="muted privacy">🔒 ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ. ການກວດຈັບ ແລະ ການເຕືອນເຮັດວຽກໄດ້ໂດຍບໍ່ມີອິນເຕີເນັດ.<br>
+      <p class="muted privacy">ສຽງບໍ່ເຄີຍອອກຈາກໂທລະສັບ. ການກວດຈັບ ແລະ ການເຕືອນເຮັດວຽກໄດ້ໂດຍບໍ່ມີອິນເຕີເນັດ.<br>
         Audio never leaves this phone. Detection and alerts work fully offline.</p>
     </section>
   </main>

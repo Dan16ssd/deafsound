@@ -18,7 +18,7 @@ export const NOVELTY = {
 };
 
 export const NOVEL_ALERT = {
-  key: 'novelty:unusual', source: 'novelty', group: 'novelty', icon: '❓', tier: 'caution',
+  key: 'novelty:unusual', source: 'novelty', group: 'novelty', mark: 'expand', tier: 'caution',
   lo: 'ມີສຽງດັງທີ່ບໍ່ຄຸ້ນເຄີຍ', en: 'Unusual loud sound',
 };
 
