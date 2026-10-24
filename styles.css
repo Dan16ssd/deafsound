@@ -610,9 +610,11 @@ html[data-contrast="high"] {
   --g-glass: #ffffff; --g-panel: #ffffff; --g-field: #ffffff;
   --g-line: #000000; --g-hi: #000000; --g-lo: #000000;
   --g-shadow: none; --g-inset: none; --g-ring: 0 0 0 3px #fff, 0 0 0 6px #000;
-  --accent: #0036c7; --accent-text: #ffffff;
+  /* Teal like the rest of the app, dark enough to keep this a high-contrast
+     theme: #045A52 is 8.1:1 against white. */
+  --accent: #045a52; --accent-text: #ffffff;
   --text-danger: #7a0000; --text-warning: #5a3500; --text-ok: #064d22;
-  --g-danger: #ffe1de; --g-warning: #ffe9b0; --g-info: #eaf0fa; --g-ok: #d4f5e0;
+  --g-danger: #ffe1de; --g-warning: #ffe9b0; --g-info: #e6f4f6; --g-ok: #d4f5e0;
   --glow-danger: transparent; --glow-warning: transparent; --glow-ok: transparent;
   --go: #06722f; --go-text: #ffffff; --stop-text: #ffffff;
 }
@@ -623,7 +625,7 @@ html[data-contrast="high"] {
     --g-glass: #000000; --g-panel: #000000; --g-field: #000000;
     --g-line: #ffffff; --g-hi: #ffffff; --g-lo: #ffffff;
     --g-ring: 0 0 0 3px #000, 0 0 0 6px #fff;
-    --accent: #9db8ff; --accent-text: #000000;
+    --accent: #6fe3d8; --accent-text: #000000;
     --text-danger: #ffb4ae; --text-warning: #ffd470; --text-ok: #8ff0b5;
     --g-danger: #2a0000; --g-warning: #2a1d00; --g-info: #0c0c0c; --g-ok: #00200d;
     --go: #3ddc84; --go-text: #000000; --stop-text: #000000;
