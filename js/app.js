@@ -1420,19 +1420,31 @@ $('mode-rescan').addEventListener('click', finderReset);
 
 // ── display: high contrast / glass ──────────────────────────────────────────
 
-// Auto picks the plain high-contrast style on slower phones (blur is expensive) and when the
-// system asks for more contrast or less transparency. Glass can always be chosen by hand.
+// Two separate questions, which this code used to answer with one test. What the
+// screen looks like is the user's call, or their operating system's; whether the
+// panels can afford a backdrop blur is the hardware's. Deciding both from the core
+// count meant a mid-range phone was handed the whole black-bordered theme when all
+// it needed was the frosting turned off.
 function wantsHighContrast() {
   if (settings.contrast === 'high') return true;
   if (settings.contrast === 'glass') return false;
-  const slow = (navigator.deviceMemory && navigator.deviceMemory <= 2) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
-  const asked = matchMedia('(prefers-contrast: more)').matches || matchMedia('(prefers-reduced-transparency: reduce)').matches;
-  return !!(slow || asked);
+  return matchMedia('(prefers-contrast: more)').matches
+    || matchMedia('(prefers-reduced-transparency: reduce)').matches;
+}
+
+// Blurring every panel is costly next to a model classifying audio ten times a
+// second. Dropping it keeps the palette, the layout and the rounded cards — the
+// only thing lost is the frosting, which no one is here for.
+function wantsPlainSurfaces() {
+  if (settings.contrast === 'high') return true;
+  return !!((navigator.deviceMemory && navigator.deviceMemory <= 2)
+    || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));
 }
 
 function applyContrast() {
   const high = wantsHighContrast();
   document.documentElement.dataset.contrast = high ? 'high' : 'glass';
+  document.documentElement.dataset.blur = wantsPlainSurfaces() ? 'off' : 'on';
   const el = $('contrast-now');
   if (el) el.textContent = high ? 'ກຳລັງໃຊ້: ຄອນທຣາສສູງ · Using: high contrast' : 'ກຳລັງໃຊ້: ແກ້ວ · Using: glass';
 }

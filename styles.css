@@ -574,6 +574,14 @@ h2::before { content: ""; display: inline-block; width: 8px; height: 8px; border
   .top, .tabs, .alert, .mode-btn, #btn-demo { background: var(--g-panel); }
   .overlay, .guide, .mode { background: var(--g-panel); }
 }
+/* A phone that cannot afford the blur loses the blur and nothing else: same teal
+   palette, same rounded cards, same layout. Pulling in the whole high-contrast
+   theme here was a surprise, not a choice — that now only happens when the user
+   or their operating system actually asks for it. */
+html[data-blur="off"] *, html[data-blur="off"] *::before {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+
 @media (prefers-contrast: more), (prefers-reduced-transparency: reduce) {
   .top, .tabs, .alert, .mode-btn, #btn-demo, .overlay, .guide, .mode, .card, .btn {
     -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
